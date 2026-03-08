@@ -1,0 +1,615 @@
+/* CreateNewContract.css */
+:root {
+  --bg: #f3f3f3;
+  --card: #ffffff;
+  --text: #111111;
+  --muted: #6e6e6e;
+  --border: #d7d7d7;
+  --accent: #ceff1b;
+
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+
+  /* dark */
+  --d-bg: #0b0b0b;
+  --d-card: #141414;
+  --d-text: #f0f0f0;
+  --d-muted: #a8a8a8;
+  --d-border: #2a2a2a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.cnc-shell {
+  background: var(--bg);
+  min-height: 100vh;
+}
+
+/* layout with sidebar */
+.cnc-layout {
+  display: flex;
+  min-height: calc(100vh - 70px);
+  /* navbar height approx */
+}
+
+.cnc-main {
+  flex: 1;
+  padding: 22px 18px 40px;
+}
+
+.cnc-wrap {
+  width: 100%;
+  margin: 0;
+}
+
+.cnc-title {
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.cnc-card {
+  background: var(--card);
+  border: 1.5px solid var(--accent);
+  border-radius: 18px;
+  padding: 22px 22px 26px;
+  box-shadow: var(--shadow);
+}
+
+.cnc-card--mt {
+  margin-top: 16px;
+}
+
+.cnc-card-title {
+  margin: 0 0 18px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.cnc-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  color: #2a2a2a;
+  margin: 0 0 6px;
+}
+
+.cnc-field {
+  width: 100%;
+}
+
+.cnc-input {
+  width: 100%;
+  height: 44px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  outline: none;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--text);
+  background: #fff;
+}
+
+.cnc-input::placeholder {
+  color: #9b9b9b;
+}
+
+.cnc-input:focus {
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+.cnc-select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, #777 50%),
+    linear-gradient(135deg, #777 50%, transparent 50%);
+  background-position: calc(100% - 16px) 18px, calc(100% - 11px) 18px;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+/* ================= Contract basics grid ================= */
+.cnc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 22px;
+}
+
+.cnc-field--empty {
+  display: none;
+}
+
+/* Contract Type: inner input + switch */
+.cnc-input--switchWrap {
+  padding: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.cnc-inputInner {
+  border: 0;
+  outline: none;
+  height: 100%;
+  width: 100%;
+  padding: 0 12px;
+  font-size: 13px;
+  color: inherit;
+  background: transparent;
+}
+
+.cnc-switchArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 10px;
+  flex-shrink: 0;
+}
+
+.cnc-switchText {
+  font-size: 14px;
+  font-weight: 800;
+  color: #2a2a2a;
+  white-space: nowrap;
+}
+
+/* Toggle */
+.cnc-switch {
+  width: 54px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid #d5d5d5;
+  background: #d9d9d9;
+  padding: 0;
+  position: relative;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.cnc-switch .cnc-knob {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #ffffff;
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  transform: translateY(-50%);
+  transition: left 160ms ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.cnc-switch.is-on {
+  background: #b9ff6a;
+  border-color: #b9ff6a;
+}
+
+.cnc-switch.is-on .cnc-knob {
+  left: 28px;
+}
+
+/* ================= Parties Involved ================= */
+
+
+.cnc-subcard {
+  background: #fff;
+  border: 1.5px solid var(--accent);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.cnc-subTop {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.cnc-subTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: #2a2a2a;
+}
+
+.cnc-subGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 860px) {
+  .cnc-twoCards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    padding: 18px;
+  }
+}
+
+/* ================= Scope & Deliverables ================= */
+.cnc-textarea {
+  width: 100%;
+  min-height: 86px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  outline: none;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text);
+  background: #fff;
+  resize: vertical;
+}
+
+.cnc-deliverables {
+  margin-top: 16px;
+}
+
+.cnc-del-title {
+  font-size: 13px;
+  font-weight: 900;
+  color: #2a2a2a;
+  margin: 0 0 10px;
+}
+
+.cnc-del-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+.cnc-addBtn {
+  margin-top: 12px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #1b1b1b;
+  background: var(--accent);
+  color: #0b0b0b;
+  font-weight: 900;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.cnc-del-list {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.cnc-del-item {
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.cnc-del-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cnc-del-pill {
+  border: 1px solid #ececec;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #222;
+  background: #fafafa;
+}
+
+.cnc-del-remove {
+  margin-top: 10px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+/* ================= Timeline & Revisions ================= */
+.cnc-timelineGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+.cnc-lateConsequence {
+  margin-top: 14px;
+}
+
+/* ================= SLA Snapshot ================= */
+.cnc-slaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 18px;
+}
+
+/* ================= Payment & Escrow ================= */
+.cnc-payTop {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr;
+  gap: 14px;
+}
+
+.cnc-milestones {
+  margin-top: 16px;
+}
+
+.cnc-mil-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr 54px;
+  gap: 14px;
+  align-items: end;
+}
+
+.cnc-trashWrap {
+  display: flex;
+  align-items: end;
+}
+
+.cnc-trashBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  border: 1px solid #1b1b1b;
+  background: var(--accent);
+  cursor: pointer;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.cnc-trashBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cnc-mil-list {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.cnc-mil-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+}
+
+.cnc-mil-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ================= Final Confirmation ================= */
+.cnc-confirmRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.cnc-confirmCard {
+  background: var(--card);
+  border: 1.5px solid var(--accent);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+.cnc-confirmTitle {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.cnc-checkRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 12px;
+  font-size: 12px;
+  color: #2a2a2a;
+}
+
+.cnc-checkRow a {
+  color: #2a65ff;
+  text-decoration: none;
+}
+
+.cnc-checkRow a:hover {
+  text-decoration: underline;
+}
+
+.cnc-primaryBtn {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #1b1b1b;
+  background: var(--accent);
+  color: #0b0b0b;
+  font-weight: 900;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.cnc-confirmActions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cnc-ghostBtn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #cfcfcf;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+/* ================= Activity table ================= */
+.cnc-tableWrap {
+  border: 1.5px solid var(--accent);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.cnc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: #fff;
+}
+
+.cnc-table th,
+.cnc-table td {
+  padding: 12px 12px;
+  border-bottom: 1px solid #ececec;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.cnc-table th {
+  font-weight: 900;
+}
+
+.cnc-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ================= Responsive ================= */
+@media (max-width: 1100px) {
+  .cnc-payTop {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .cnc-del-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cnc-timelineGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cnc-mil-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cnc-trashWrap {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .cnc-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cnc-timelineGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cnc-slaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cnc-confirmRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .cnc-del-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================= DARK MODE ================= */
+.user-page.dark {
+  background: var(--d-bg);
+  color: var(--d-text);
+}
+
+.user-page.dark .cnc-title,
+.user-page.dark .cnc-card-title,
+.user-page.dark .cnc-confirmTitle {
+  color: var(--d-text);
+}
+
+.user-page.dark .cnc-card,
+.user-page.dark .cnc-confirmCard {
+  background: var(--d-card);
+  box-shadow: none;
+}
+
+.user-page.dark .cnc-label,
+.user-page.dark .cnc-subTitle,
+.user-page.dark .cnc-del-title {
+  color: var(--d-text);
+}
+
+.user-page.dark .cnc-input,
+.user-page.dark .cnc-textarea,
+.user-page.dark .cnc-subcard,
+.user-page.dark .cnc-mil-item,
+.user-page.dark .cnc-del-item,
+.user-page.dark .cnc-table {
+  background: #0f0f0f;
+  color: var(--d-text);
+  border-color: var(--d-border);
+}
+
+.user-page.dark .cnc-input::placeholder,
+.user-page.dark .cnc-textarea::placeholder {
+  color: #8f8f8f;
+}
+
+.user-page.dark .cnc-twoCards,
+.user-page.dark .cnc-tableWrap {
+  border-color: var(--accent);
+}
+
+.user-page.dark .cnc-ghostBtn {
+  background: #0f0f0f;
+  color: var(--d-text);
+  border-color: var(--d-border);
+}
+
+.user-page.dark .cnc-checkRow {
+  color: var(--d-muted);
+}
+
+.user-page.dark .cnc-table th,
+.user-page.dark .cnc-table td {
+  border-bottom-color: var(--d-border);
+}
+
+.user-page.dark .cnc-del-pill {
+  background: #121212;
+  border-color: var(--d-border);
+  color: var(--d-text);
+}
+
+.user-page.dark .cnc-switchText {
+  color: var(--d-text);
+}
