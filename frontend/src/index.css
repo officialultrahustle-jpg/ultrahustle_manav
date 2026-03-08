@@ -1,5 +1,3 @@
-
-
 /* ------------------------------------------------------------
    FIXED: @import must come first in CSS (after @charset if any)
 ------------------------------------------------------------ */
@@ -13,33 +11,33 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
   display: block;
   overflow-x: hidden;
 }
 
-/* ===== Custom Scrollbar ===== */
-.custom-scroll::-webkit-scrollbar {
+/* ===== Global Custom Scrollbar ===== */
+::-webkit-scrollbar {
   width: 8px;
 }
 
-.custom-scroll::-webkit-scrollbar-track {
-  background: #f2f2f2; /* background */
+::-webkit-scrollbar-track {
+  background: #f2f2f2;
   border-radius: 10px;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb {
-  background-color: #ceff1b; /* 🔥 required color */
+::-webkit-scrollbar-thumb {
+  background-color: #ceff1b;
   border-radius: 10px;
   border: 2px solid #f2f2f2;
 }
 
-.custom-scroll::-webkit-scrollbar-thumb:hover {
-  background-color: #b9e600; /* hover thoda dark */
+::-webkit-scrollbar-thumb:hover {
+  background-color: #b9e600;
 }
 
 /* Firefox support */
-.custom-scroll {
+* {
   scrollbar-width: thin;
   scrollbar-color: #ceff1b #f2f2f2;
 }
@@ -52,9 +50,12 @@ html {
 @layer base {
   body {
     @apply bg-[#E0E0E0] text-dark;
-    /* Assuming white background based on "acid green" usually accompanying dark or white. Image looked like it had light background with blobs? Actually user said "acid green" in my head but I should double check. The image was uploaded. I'll stick to safe defaults and refine.*/
-    /* Re-reading thought trace: I assumed acid green. Let's make it dark mode by default if it looks "premium". */
-    /* Let's wait to see the image or just use a neutral base */
+  }
+
+  input,
+  select,
+  textarea {
+    background-color: transparent;
   }
 }
 
@@ -95,8 +96,9 @@ html {
     transform: translate(-30%, -30%);
     opacity: 0.5;
   }
-  
+
 }
+
 .vertical-slider {
   display: flex;
   flex-direction: column;
@@ -107,16 +109,15 @@ html {
   height: 52px;
   display: flex;
   align-items: center;
-  font-size: 2.25rem; /* text-4xl */
+  font-size: 2.25rem;
+  /* text-4xl */
   font-weight: 700;
   font-family: Roboto, sans-serif;
 
-  background: linear-gradient(
-    to bottom,
-    #b4e619,
-    #7a7a7a,
-    #2f2f2f
-  );
+  background: linear-gradient(to bottom,
+      #b4e619,
+      #7a7a7a,
+      #2f2f2f);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -127,6 +128,7 @@ html {
   0% {
     transform: translateY(0);
   }
+
   25% {
     transform: translateY(0);
   }
@@ -134,6 +136,7 @@ html {
   33% {
     transform: translateY(-52px);
   }
+
   58% {
     transform: translateY(-52px);
   }
@@ -141,6 +144,7 @@ html {
   66% {
     transform: translateY(-104px);
   }
+
   91% {
     transform: translateY(-104px);
   }
@@ -151,28 +155,14 @@ html {
 }
 
 
-/* ROBOT BACKGROUND GLOW */
-.robot-glow {
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(circle,
-    rgba(198, 255, 26, 0.55) 0%,
-    rgba(198, 255, 26, 0.32) 30%,
-    rgba(198, 255, 26, 0.14) 55%,
-    rgba(198, 255, 26, 0.04) 70%,
-    rgba(198, 255, 26, 0.00) 85%
-  );
-  filter: blur(95px);
-  border-radius: 50%;
-  transform: translateY(20px);
-}
+
 
 /* FLOATING PILL REUSE */
 .pill {
   background: linear-gradient(to right, #d4ff00, #b5e600);
   padding: 12px 32px;
   border-radius: 999px;
-  box-shadow: 0 0 22px rgba(212,255,0,0.6);
+  box-shadow: 0 0 22px rgba(212, 255, 0, 0.6);
   z-index: 20;
 }
 
@@ -197,8 +187,10 @@ html {
 
 /* TOP GREEN LINE (image jaisi) */
 .nav-pill {
-  width: 42px;              /* wider like image */
-  height: 6px;              /* slightly thick */
+  width: 42px;
+  /* wider like image */
+  height: 6px;
+  /* slightly thick */
   border-radius: 999px;
   background: transparent;
   transition: all 0.25s ease;
@@ -214,11 +206,13 @@ html {
 
 /* HOVER EFFECT */
 .nav-item:hover .nav-pill {
-  background: #c6ff1a;     /* exact neon green */
+  background: #c6ff1a;
+  /* exact neon green */
 }
 
 .nav-item:hover .nav-text {
-  color: #c6ff1a;          /* same green as line */
+  color: #c6ff1a;
+  /* same green as line */
 }
 
 
@@ -226,6 +220,7 @@ html {
 .login-signup-hover {
   transition: all 0.25s ease !important;
 }
+
 .login-signup-hover:hover {
   background-color: #ffffff !important;
   border-color: #bef264 !important;
@@ -234,75 +229,28 @@ html {
 
 /* Pill hover */
 .pill-hover {
-  background-color: rgba(255,255,255,0.1);
+  background-color: rgba(255, 255, 255, 0.1);
   transition: background-color 0.5s;
 }
+
 .pill-hover:hover {
   animation: pillHoverAnim 4s forwards;
 }
+
 @keyframes pillHoverAnim {
-  0% { background-color: #232833; }
-  100% { background-color: rgba(255,255,255,0.3); }
+  0% {
+    background-color: #232833;
+  }
+
+  100% {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
 }
 
-/* --------------------- GLOBAL GREEN GLOW CSS --------------------- */
-/* --------------------- GLOBAL GREEN GLOW CSS --------------------- */
-/* Put at end of your global stylesheet (src/index.css) */
 
-.green-blob,
-.green-blob-2 {
-  position: fixed; /* <-- ONE FIXED, both ok but only primary will stay stable */
-  transform: translate(-50%, -50%) scale(1.15); /* <-- SIZE INCREASED */
-  pointer-events: none;
-  z-index: 999;
-  transition: left 3.8s ease, top 3.8s ease, opacity 1.2s ease, transform 4s ease;
-  opacity: 0;
-  will-change: left, top, opacity, transform;
-}
-
-/* --------------------- PRIMARY BLOB (fixed + darker green + bigger) --------------------- */
-.green-blob {
-  width: 640px;       /* was 520px → now bigger */
-  height: 640px;      /* was 520px → now bigger */
-
-  background: radial-gradient(circle,
-    rgba(140, 207, 15, 0.55) 0%,    /* darker & richer green */
-    rgba(166, 215, 78, 0.32) 28%,
-    rgba(166, 215, 78, 0.12) 56%,
-    rgba(166, 215, 78, 0.00) 85%
-  );
-
-  filter: blur(92px); /* slightly more glow */
-}
-
-/* --------------------- SECONDARY BLOB (unchanged except slightly darker) --------------------- */
-.green-blob-2 {
-  width: 360px;   /* slightly bigger */
-  height: 360px;
-
-  background: radial-gradient(circle,
-    rgba(70, 95, 35, 0.34) 0%,    /* darker center */
-    rgba(166, 215, 78, 0.16) 40%,
-    rgba(166, 215, 78, 0.00) 80%
-  );
-
-  filter: blur(62px);
-  transform: translate(-50%, -50%) scale(1.05); /* little bigger */
-}
-
-/* helpers */
-.green-visible { opacity: 1 !important; transform: translate(-50%, -50%) scale(1.15); }
-.green-hidden  { opacity: 0 !important; transform: translate(-50%, -50%) scale(1.05); }
-
-/* ----------------- RESPONSIVE TWEAKS ----------------- */
-@media (min-width: 768px) {
-  .navbar-top-egg-black,
-  .navbar-top-egg-green { width: 48px; height: 10px; border-radius: 28px 28px 0 0; }
-}
-/* ===== Safe per-item egg overrides (no destructive !important hiding) ===== */
 
 /* Default: keep eggs hidden by normal rules (no !important) */
-.navbar-link-item > .navbar-top-egg-green {
+.navbar-link-item>.navbar-top-egg-green {
   opacity: 0;
   transform: translateX(-50%) translateY(-6px);
   animation: none;
@@ -313,7 +261,7 @@ html {
 /* When the explicit visible class is present, show the egg.
    We use a high-specificity selector and only one !important here so it
    beats earlier author-level rules without globally disabling inline styles. */
-.navbar-link-item > .navbar-top-egg-green.navbar-top-egg-green-visible {
+.navbar-link-item>.navbar-top-egg-green.navbar-top-egg-green-visible {
   opacity: 1 !important;
   transform: translateX(-50%) translateY(0) !important;
   background: #bef264 !important;
@@ -322,35 +270,19 @@ html {
 }
 
 /* Ensure black egg visibility controlled by its visible class */
-.navbar-link-item > .navbar-top-egg-black {
+.navbar-link-item>.navbar-top-egg-black {
   opacity: 0;
   transform: translateX(-50%) translateY(-6px);
 }
-.navbar-link-item > .navbar-top-egg-black.navbar-top-egg-black-visible {
+
+.navbar-link-item>.navbar-top-egg-black.navbar-top-egg-black-visible {
   opacity: 1 !important;
   transform: translateX(-50%) translateY(0) !important;
   background: #000 !important;
 }
 
 /* Local hover fallback (per-item only) */
-.navbar-link-item:hover > .navbar-top-egg-green {
+.navbar-link-item:hover>.navbar-top-egg-green {
   opacity: 1;
   transform: translateX(-50%) translateY(-2px);
 }
-
-
-
-/* ----------------- CLEANUP NOTES -----------------
-1) React code already sets style={{ '--delay': `${idx * 0.25}s`, '--cycle': '1s' }}
-   That produces the stagger 1 → 2 → 3 when the parent gets .navbar-hovering.
-
-2) Keep the container className toggling you already wrote:
-   <div className={`hidden md:flex ... ${isHovered ? "navbar-hovering" : ""}`} ...>
-
-3) Don't include any CSS rule that 'display:none !important' on the green eggs
-   — that previously removed the animation. This file intentionally keeps them visible.
-
-4) If you want the green blobs to float around, update their left/top via JS
-   and toggle .green-visible on them to show/hide.
-
--------------------------------------------------------------------- */
