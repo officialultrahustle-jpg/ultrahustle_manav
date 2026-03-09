@@ -1,8 +1,10 @@
 import axios from "axios";
 import { getAuthToken } from "../../auth/api/authApi";
 
-// In dev, keep baseURL empty so Vite proxy can forward /api/* to backend.
-const API_BASE_URL = import.meta.env.DEV ? "" : (import.meta.env.VITE_API_BASE_URL || "");
+// Base URL for axios.
+// - Set VITE_API_BASE_URL to call your backend directly (e.g. http://159.89.193.253/).
+// - Leave empty to use same-origin requests (useful with Vite proxy in dev).
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
