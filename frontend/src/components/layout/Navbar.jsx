@@ -37,7 +37,9 @@ export default function Navbar() {
           <div className="flex items-center gap-10">
             <Link to="/" className="nav-item cursor-pointer">
               <span className="nav-pill"></span>
-              <span className="nav-text">Bal Bal</span>
+              <span className="nav-text">Bal Bal bal
+                
+              </span>
             </Link>
 
             <Link to="/marketplace" className="nav-item cursor-pointer">
