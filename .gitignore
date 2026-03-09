@@ -19,6 +19,16 @@
 /storage/*.key
 /storage/pail
 /vendor
+
+# Backend moved under bcakend_api/
+/bcakend_api/.env
+/bcakend_api/node_modules
+/bcakend_api/public/build
+/bcakend_api/public/hot
+/bcakend_api/public/storage
+/bcakend_api/storage/*.key
+/bcakend_api/storage/pail
+/bcakend_api/vendor
 Homestead.json
 Homestead.yaml
 Thumbs.db
