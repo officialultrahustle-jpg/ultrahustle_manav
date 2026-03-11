@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
@@ -8,6 +8,9 @@ import NavbarLight from "../../../components/layout/UserNavbar";
 import Sidebar from "../../../components/layout/Sidebar";
 import "../../../Darkuser.css";
 import "../../onboarding/components/OnboardingSelect.css";
+
+import { getMyPersonalInfo } from "../api/personalInfoApi";
+import { getMyPortfolio } from "../api/portfolioApi";
 
 
 const UserProfile = (props) => {
@@ -117,51 +120,169 @@ const UserProfile = (props) => {
 
   // ✅ teamData / portfolioData / listingsData / reviewsData
   // (tumhara same data yahin rahega)
-  const teamData = {
-    name: " Name",
-    username: "@Abigail_12",
-    title: "Product Designer & Full-Stack Developer",
-    location: "Kolkata, India",
-    description:
-      "Award-winning designer with 8+ years creating elegant, user-centered digital experiences. Specialized in design systems, mobile apps, and SaaS platforms.",
-    availability: "Available for collaboration",
-    stats: {
-      karma: 200,
-      projectsCompleted: 47,
-      averageRating: 4.3,
-      members: 30,
-    },
-    badges: ["Trusted Seller", "Fast Responder", "Quality Work"],
-    hashtags: ["#UI/UX", "#Web Design", "#React", "#Figma", "#Mobile"],
-    about: [
-      "I'm a passionate product designer and full-stack developer with over 8 years of experience creating elegant, user-centered digital experiences.",
-      "I specialize in bridging the gap between design and development, building pixel-perfect interfaces with clean, maintainable code.",
-    ],
-    whatWeDo: [
-      "I'm a passionate product designer and full-stack developer with over 8 years of experience creating elegant, user-centered digital experiences.",
-      "I specialize in bridging the gap between design and development, building pixel-perfect interfaces with clean, maintainable code.",
-    ],
-    skills: [
-      "Product Design",
-      "UI/UX Design",
-      "Design Systems",
-      "Mobile App Design",
-      "Prototyping",
-      "User Research",
-      "Responsive Design",
-      "Interaction Design",
-    ],
-    tools: [
-      "Notion",
-      "Tailwind CSS",
-      "Photoshop",
-      "Figma",
-      "Illustrator",
-      "TypeScript",
-      "Webflow",
-    ],
-    languages: ["English", "Hindi", "Tamil",],
+  const defaultTeamData = useMemo(
+    () => ({
+      name: " Name",
+      username: "@Abigail_12",
+      title: "Product Designer & Full-Stack Developer",
+      location: "Kolkata, India",
+      description:
+        "Award-winning designer with 8+ years creating elegant, user-centered digital experiences. Specialized in design systems, mobile apps, and SaaS platforms.",
+      availability: "Available for collaboration",
+      stats: {
+        karma: 300,
+        projectsCompleted: 47,
+        averageRating: 4.3,
+        members: 30,
+      },
+      badges: ["Trusted Seller", "Fast Responder", "Quality Work"],
+      hashtags: ["#UI/UX", "#Web Design", "#React", "#Figma", "#Mobile"],
+      about: [
+        "I'm a passionate product designer and full-stack developer with over 8 years of experience creating elegant, user-centered digital experiences.",
+        "I specialize in bridging the gap between design and development, building pixel-perfect interfaces with clean, maintainable code.",
+      ],
+      whatWeDo: [
+        "I'm a passionate product designer and full-stack developer with over 8 years of experience creating elegant, user-centered digital experiences.",
+        "I specialize in bridging the gap between design and development, building pixel-perfect interfaces with clean, maintainable code.",
+      ],
+      skills: [
+        "Product Design",
+        "UI/UX Design",
+        "Design Systems",
+        "Mobile App Design",
+        "Prototyping",
+        "User Research",
+        "Responsive Design",
+        "Interaction Design",
+      ],
+      tools: [
+        "Notion",
+        "Tailwind CSS",
+        "Photoshop",
+        "Figma",
+        "Illustrator",
+        "TypeScript",
+        "Webflow",
+      ],
+      languages: ["English", "Hindi", "Tamil"],
+      avatarUrl: "",
+    }),
+    [],
+  );
+
+  const [teamData, setTeamData] = useState(defaultTeamData);
+  const [personalInfo, setPersonalInfo] = useState(null);
+  const [personalInfoLoading, setPersonalInfoLoading] = useState(false);
+  const [personalInfoError, setPersonalInfoError] = useState("");
+
+  const formatDateOnly = (isoString) => {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    if (Number.isNaN(d.getTime())) return String(isoString);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
   };
+
+  const splitParagraphs = (value) => {
+    const text = typeof value === "string" ? value.trim() : "";
+    if (!text) return [];
+    return text
+      .split(/\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+  };
+
+  const buildLocation = (data) => {
+    const parts = [data?.city, data?.state, data?.country]
+      .map((v) => (typeof v === "string" ? v.trim() : ""))
+      .filter(Boolean);
+    return parts.length ? parts.join(", ") : "";
+  };
+
+  const normalizeTags = (arr) => {
+    if (!Array.isArray(arr)) return null;
+    const cleaned = arr
+      .map((t) => String(t || "").trim())
+      .filter(Boolean)
+      .map((t) => (t.startsWith("#") ? t : `#${t}`));
+    return cleaned.length ? cleaned : null;
+  };
+
+  const mergeIfPresent = (prev, nextValues) => {
+    const next = { ...prev };
+    Object.entries(nextValues || {}).forEach(([key, val]) => {
+      if (val === null || val === undefined) return;
+      if (typeof val === "string" && val.trim() === "") return;
+      if (Array.isArray(val) && val.length === 0) return;
+      next[key] = val;
+    });
+    return next;
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadPersonalInfo = async () => {
+      setPersonalInfoError("");
+      setPersonalInfoLoading(true);
+      try {
+        const res = await getMyPersonalInfo();
+        const data = res?.data ?? res;
+
+        if (!mounted) return;
+        setPersonalInfo(data);
+
+        const displayName = String(data?.display_name || "").trim();
+        const first = String(data?.first_name || "").trim();
+        const last = String(data?.last_name || "").trim();
+        const fallbackName = [first, last].filter(Boolean).join(" ");
+        const name = displayName || fallbackName;
+
+        const username = String(data?.username || "").trim();
+        const formattedUsername = username ? (username.startsWith("@") ? username : `@${username}`) : "";
+
+        const location = buildLocation(data);
+        const about = splitParagraphs(data?.about);
+        const description = String(data?.short_bio || "").trim();
+
+        const hashtags = normalizeTags(data?.hashtags);
+        const skills = Array.isArray(data?.skills) && data.skills.length ? data.skills : null;
+        const tools = Array.isArray(data?.tools) && data.tools.length ? data.tools : null;
+        const languages = Array.isArray(data?.languages) && data.languages.length ? data.languages : null;
+
+        setTeamData((prev) =>
+          mergeIfPresent(prev, {
+            ...(name ? { name } : {}),
+            ...(formattedUsername ? { username: formattedUsername } : {}),
+            ...(String(data?.title || "").trim() ? { title: String(data.title).trim() } : {}),
+            ...(location ? { location } : {}),
+            ...(description ? { description } : {}),
+            ...(data?.availability ? { availability: data.availability } : {}),
+            ...(hashtags ? { hashtags } : {}),
+            ...(about.length ? { about } : {}),
+            ...(skills ? { skills } : {}),
+            ...(tools ? { tools } : {}),
+            ...(languages ? { languages } : {}),
+            ...(String(data?.avatar_url || "").trim() ? { avatarUrl: String(data.avatar_url).trim() } : {}),
+          }),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setPersonalInfo(null);
+        setPersonalInfoError(e?.message || "Request failed");
+      } finally {
+        if (!mounted) return;
+        setPersonalInfoLoading(false);
+      }
+    };
+
+    loadPersonalInfo();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const teams = [
     {
@@ -190,39 +311,107 @@ const UserProfile = (props) => {
     },
   ];
 
-  const portfolioData = {
-    featured: {
-      image:
-        "https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
-      title: "SalonSync - Revolutionary AI-Powered Salon App UI/UX",
-      description:
-        "This project involves designing a next-generation salon mobile application with AI-powered recommendations.",
-      cost: "$600-$800",
-    },
-    items: [
-      {
+  const defaultPortfolioData = useMemo(
+    () => ({
+      featured: {
         image:
-          "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-        title: "Title",
-        description: "Description",
-        cost: "$",
-      },
-      {
-        image:
-          "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-        title: "E-commerce Dashboard Redesign",
-        description: "This project involves designing more...",
+          "https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80",
+        title: "SalonSync - Revolutionary AI-Powered Salon App UI/UX",
+        description:
+          "This project involves designing a next-generation salon mobile application with AI-powered recommendations.",
         cost: "$600-$800",
       },
-      {
-        image:
-          "https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-        title: "E-commerce Dashboard Redesign",
-        description: "This project involves designing more...",
-        cost: "$600-$800",
-      },
-    ],
-  };
+      items: [
+        {
+          image:
+            "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+          title: "Title",
+          description: "Description",
+          cost: "$",
+        },
+        {
+          image:
+            "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+          title: "E-commerce Dashboard Redesign",
+          description: "This project involves designing more...",
+          cost: "$600-$800",
+        },
+        {
+          image:
+            "https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
+          title: "E-commerce Dashboard Redesign",
+          description: "This project involves designing more...",
+          cost: "$600-$800",
+        },
+      ],
+    }),
+    [],
+  );
+
+  const [portfolioData, setPortfolioData] = useState(defaultPortfolioData);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const extractProjectImage = (p, fallback) => {
+      const candidate =
+        p?.cover_media?.url ||
+        p?.cover_media?.path ||
+        p?.cover_url ||
+        p?.coverUrl ||
+        p?.media?.[0]?.url ||
+        p?.media?.[0]?.path ||
+        "";
+      const url = typeof candidate === "string" ? candidate.trim() : "";
+      return url || fallback;
+    };
+
+    const extractCost = (p) => {
+      if (p?.cost_cents === null || p?.cost_cents === undefined || p?.cost_cents === "") return "";
+      const currency = String(p?.currency || "INR").trim();
+      return `${currency} ${p.cost_cents}`;
+    };
+
+    const normalizeProjects = (res) => {
+      const raw = res?.projects || res?.data?.projects || res?.portfolio?.projects || [];
+      return Array.isArray(raw) ? raw : [];
+    };
+
+    const loadPortfolioForProfile = async () => {
+      try {
+        const res = await getMyPortfolio();
+        const serverProjects = normalizeProjects(res)
+          .slice()
+          .sort((a, b) => (a?.sort_order ?? 0) - (b?.sort_order ?? 0));
+
+        if (!mounted) return;
+        if (serverProjects.length === 0) return; // keep default UI
+
+        const featuredFallback = defaultPortfolioData.featured.image;
+        const itemFallback = defaultPortfolioData.items?.[0]?.image || featuredFallback;
+
+        const mapProject = (p, fallbackImage) => ({
+          image: extractProjectImage(p, fallbackImage),
+          title: p?.title ?? "",
+          description: p?.description ?? "",
+          cost: extractCost(p),
+        });
+
+        const [first, ...rest] = serverProjects;
+        setPortfolioData({
+          featured: mapProject(first, featuredFallback),
+          items: rest.map((p) => mapProject(p, itemFallback)),
+        });
+      } catch {
+        // Keep current UI (no design change) if request fails.
+      }
+    };
+
+    loadPortfolioForProfile();
+    return () => {
+      mounted = false;
+    };
+  }, [defaultPortfolioData]);
 
   const listingsData = [
     {
@@ -376,7 +565,15 @@ const UserProfile = (props) => {
               {/* Profile Card */}
               <section className="profile-card">
                 <div className="profile-left">
-                  <div className="profile-avatar"></div>
+                  <div className="profile-avatar">
+                    {teamData.avatarUrl ? (
+                      <img
+                        src={teamData.avatarUrl}
+                        alt="avatar"
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : null}
+                  </div>
 
                   <div className="profile-info">
                     <h1 className="profile-name">{teamData.name}</h1>
@@ -660,6 +857,69 @@ const UserProfile = (props) => {
                     <span className="stat-label">Activity Time</span>
                   </div>
                 </div>
+              </section>
+
+              {/* About Section */}
+              <section className="content-card">
+                <h3 className="card-title">Personal Info</h3>
+
+                {personalInfoLoading ? (
+                  <p className="card-text">Loading personal info...</p>
+                ) : personalInfoError ? (
+                  <p className="card-text" style={{ color: "#dc2626" }}>{personalInfoError}</p>
+                ) : personalInfo ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {(() => {
+                      const d = personalInfo;
+                      const rows = [
+                        { label: "UH User ID", value: d?.uh_user_id },
+                        { label: "Email", value: d?.email },
+                        { label: "Contact email", value: d?.contact_email },
+                        {
+                          label: "Phone",
+                          value: [d?.phone_country_code, d?.phone_number].filter(Boolean).join(" "),
+                        },
+                        { label: "Gender", value: d?.gender },
+                        { label: "Date of birth", value: formatDateOnly(d?.date_of_birth) },
+                        { label: "Street", value: d?.street },
+                        { label: "City", value: d?.city },
+                        { label: "State", value: d?.state },
+                        { label: "Country", value: d?.country },
+                        { label: "Pincode", value: d?.pincode },
+                        { label: "Display name", value: d?.display_name },
+                        { label: "First name", value: d?.first_name },
+                        { label: "Last name", value: d?.last_name },
+                        { label: "Username", value: d?.username },
+                        { label: "Title", value: d?.title },
+                        { label: "Short bio", value: d?.short_bio },
+                      ];
+
+                      const visible = rows
+                        .map((r) => ({ ...r, value: typeof r.value === "string" ? r.value.trim() : r.value }))
+                        .filter((r) => r.value !== null && r.value !== undefined && String(r.value).trim() !== "");
+
+                      if (visible.length === 0) {
+                        return <p className="card-text">No personal info available.</p>;
+                      }
+
+                      return visible.map((r) => (
+                        <div
+                          key={r.label}
+                          className="relative rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 px-4 pb-3 pt-5"
+                        >
+                          <div className="absolute -top-2 left-3 px-2 py-0.5 rounded-md text-xs sm:text-sm font-semibold tracking-wide uppercase !text-black bg-white dark:bg-[#121212] border border-black/10 dark:border-white/10">
+                            {r.label}
+                          </div>
+                          <div className="text-sm sm:text-base font-medium text-black dark:text-white break-words">
+                            {String(r.value)}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                ) : (
+                  <p className="card-text">No personal info available.</p>
+                )}
               </section>
 
               {/* About Section */}

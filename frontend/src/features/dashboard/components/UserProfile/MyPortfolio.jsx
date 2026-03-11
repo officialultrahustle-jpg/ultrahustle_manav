@@ -1,702 +1,611 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
-  deleteMyAvatar,
-  getMyPersonalInfo,
-  uploadMyAvatar,
-} from "../../api/personalInfoApi";
+  deletePortfolioProject,
+  getMyPortfolio,
+  putMyPortfolio,
+  uploadProjectMedia,
+} from "../../api/portfolioApi";
 
-export default function ProfileForm() {
-  const TITLE_LIMIT = 40;
-  const BIO_LIMIT = 160;
+let nextId = 4; // counter for unique IDs
 
-  const [title, setTitle] = useState("Product Designer & Full Stack Developer");
-  const [bio, setBio] = useState(
-    "Award-winning designer with 8+ years creating elegant, user-centered digital experiences. Specialized in design systems, mobile apps, and SaaS platforms."
-  );
+export default function MyPortfolio() {
+  const [projects, setProjects] = useState([
+    { id: 1, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+    { id: 2, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+    { id: 3, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+  ]);
 
-  const [openImageModal, setOpenImageModal] = useState(false);
-  const [openFriends, setOpenFriends] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [zoom, setZoom] = useState(0);
-  const fileRef = useRef(null);
+  const [mainProject, setMainProject] = useState({
+    serverId: null,
+    title: "",
+    desc: "",
+    cost: "",
+    coverUrl: "",
+  });
 
-  const [personalInfo, setPersonalInfo] = useState(null);
-  const [personalInfoLoading, setPersonalInfoLoading] = useState(false);
-  const [avatarBusy, setAvatarBusy] = useState(false);
-  const [avatarError, setAvatarError] = useState("");
+  const [uploadStep, setUploadStep] = useState(null); // null | "grid" | "success"
+  const [uploadTarget, setUploadTarget] = useState(null); // { type: 'main'|'project', localId?: number, serverId?: number|null }
 
-  const backendOrigin = import.meta.env.VITE_BACKEND_ORIGIN || "";
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const toAbsoluteUrl = (maybeUrl) => {
-    if (!maybeUrl || typeof maybeUrl !== "string") return "";
-    if (maybeUrl.startsWith("http://") || maybeUrl.startsWith("https://")) return maybeUrl;
-    if (maybeUrl.startsWith("//")) return `${window.location.protocol}${maybeUrl}`;
-    if (maybeUrl.startsWith("/")) return backendOrigin ? `${backendOrigin}${maybeUrl}` : maybeUrl;
-    return backendOrigin ? `${backendOrigin}/${maybeUrl}` : maybeUrl;
+  const addProject = () => {
+    setProjects((prev) => [
+      ...prev,
+      { id: nextId++, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+    ]);
   };
 
-  const normalizePersonalInfo = (info) => info?.data || info;
+  const removeProject = async (id) => {
+    setError("");
+    const project = projects.find((p) => p.id === id);
+    if (!project) return;
 
-  const loadPersonalInfo = async () => {
-    setPersonalInfoLoading(true);
+    // If it already exists on the backend, delete it there first.
+    if (project.serverId) {
+      try {
+        await deletePortfolioProject(project.serverId);
+      } catch (e) {
+        setError(e?.message || "Request failed");
+        return;
+      }
+    }
+
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const updateProject = (id, field, value) => {
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  };
+
+  const normalizeServerProjects = (data) => {
+    const raw = data?.projects || data?.data?.projects || data?.portfolio?.projects || [];
+    if (!Array.isArray(raw)) return [];
+    return raw;
+  };
+
+  const projectToLocal = (p) => {
+    const coverUrl = p?.cover_media?.url || p?.cover_media?.path || p?.cover_url || p?.coverUrl || "";
+
+    const cost =
+      (typeof p?.cost_cents === "number" ? String(p.cost_cents) : p?.cost_cents) ??
+      p?.cost ??
+      p?.project_cost ??
+      "";
+
+    return {
+      id: nextId++,
+      serverId: p?.id ?? null,
+      title: p?.title ?? "",
+      desc: p?.description ?? p?.desc ?? "",
+      cost: cost === null || cost === undefined ? "" : String(cost),
+      coverUrl,
+      sortOrder: p?.sort_order ?? 0,
+    };
+  };
+
+  const refreshPortfolio = async () => {
+    setError("");
+    setIsLoading(true);
     try {
-      const info = await getMyPersonalInfo();
-      setPersonalInfo(info);
-    } catch {
-      // Keep UI functional even if personal info isn't available yet.
-      setPersonalInfo(null);
+      const data = await getMyPortfolio();
+      const serverProjects = normalizeServerProjects(data);
+      const mapped = serverProjects
+        .slice()
+        .sort((a, b) => (a?.sort_order ?? 0) - (b?.sort_order ?? 0))
+        .map(projectToLocal);
+
+      if (mapped.length > 0) {
+        const [first, ...rest] = mapped;
+        setMainProject({
+          serverId: first.serverId,
+          title: first.title,
+          desc: first.desc,
+          cost: first.cost,
+          coverUrl: first.coverUrl,
+        });
+        setProjects(
+          rest.length
+            ? rest.map((p) => ({ ...p }))
+            : [
+                { id: 1, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+                { id: 2, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+                { id: 3, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+              ],
+        );
+      } else {
+        setMainProject({ serverId: null, title: "", desc: "", cost: "", coverUrl: "" });
+        setProjects([
+          { id: 1, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+          { id: 2, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+          { id: 3, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+        ]);
+      }
+    } catch (e) {
+      setError(e?.message || "Request failed");
     } finally {
-      setPersonalInfoLoading(false);
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadPersonalInfo();
+    refreshPortfolio();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setAvatarError("");
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onload = () => setSelectedImage(reader.result);
-      reader.readAsDataURL(file);
+  const buildSavePayload = () => {
+    const combined = [{ ...mainProject, _sort: 0 }, ...projects.map((p, idx) => ({ ...p, _sort: idx + 1 }))];
+
+    return {
+      projects: combined.map((p) => ({
+        ...(p.serverId ? { id: p.serverId } : {}),
+        title: p.title,
+        description: p.desc,
+        // Backend expects `cost_cents` (see GET /api/v1/me/portfolio response)
+        cost_cents: p.cost === "" ? null : Number.parseInt(String(p.cost), 10),
+        currency: "INR",
+        sort_order: p._sort,
+      })),
+    };
+  };
+
+  const handleSaveChanges = async () => {
+    setError("");
+    try {
+      setIsSaving(true);
+      await putMyPortfolio(buildSavePayload());
+      await refreshPortfolio();
+    } catch (e) {
+      setError(e?.message || "Request failed");
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const normalized = normalizePersonalInfo(personalInfo);
+  const handleDiscard = async () => {
+    setError("");
+    setUploadStep(null);
+    await refreshPortfolio();
+  };
 
-  const displayName =
-    [normalized?.first_name ?? normalized?.firstName, normalized?.last_name ?? normalized?.lastName]
-      .filter(Boolean)
-      .join(" ") ||
-    normalized?.username ||
-    normalized?.contact_email ||
-    normalized?.email ||
-    "My Profile";
+  const openUploadForMain = () => {
+    setError("");
+    setUploadTarget({ type: "main", serverId: mainProject?.serverId || null });
+    setUploadStep("grid");
+  };
 
-  const rawAvatarUrl =
-    normalized?.avatar_url ||
-    normalized?.avatarUrl ||
-    normalized?.avatar ||
-    normalized?.profile_image_url ||
-    "";
+  const openUploadForProject = (project) => {
+    setError("");
+    setUploadTarget({ type: "project", localId: project.id, serverId: project?.serverId || null });
+    setUploadStep("grid");
+  };
 
-  const avatarUrl = toAbsoluteUrl(rawAvatarUrl);
+  const handleUploadSelected = async (files) => {
+    setError("");
+    const serverId = uploadTarget?.serverId;
 
-  const handleUploadAvatar = async () => {
-    if (!selectedFile) {
-      setAvatarError("Please select an image.");
+    if (!serverId) {
+      setError("Please save changes before uploading media.");
       return;
     }
 
-    const MAX_BYTES = 10 * 1024 * 1024;
-    if (selectedFile.size > MAX_BYTES) {
-      setAvatarError("Maximum upload size is 10 MB.");
-      return;
-    }
-
-    setAvatarBusy(true);
-    setAvatarError("");
     try {
-      await uploadMyAvatar(selectedFile);
-      await loadPersonalInfo();
-      setOpenImageModal(false);
-      setSelectedFile(null);
-      setSelectedImage(null);
-      setZoom(0);
-    } catch (err) {
-      setAvatarError(err?.message || "Failed to upload avatar.");
+      setIsSaving(true);
+      await uploadProjectMedia(serverId, files);
+      setUploadStep("success");
+      await refreshPortfolio();
+    } catch (e) {
+      setError(e?.message || "Request failed");
     } finally {
-      setAvatarBusy(false);
+      setIsSaving(false);
     }
   };
 
-  const handleDeleteAvatar = async () => {
-    setAvatarBusy(true);
-    setAvatarError("");
-    try {
-      await deleteMyAvatar();
-      await loadPersonalInfo();
-      setSelectedFile(null);
-      setSelectedImage(null);
-      setZoom(0);
-      setOpenImageModal(false);
-    } catch (err) {
-      setAvatarError(err?.message || "Failed to delete avatar.");
-    } finally {
-      setAvatarBusy(false);
-    }
-  };
+  // ✅ Modal open when grid OR success
+  const isModalOpen = uploadStep === "grid" || uploadStep === "success";
+
+  // ✅ ESC close + body scroll lock when modal open
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") setUploadStep(null);
+    };
+    window.addEventListener("keydown", onKey);
+
+    if (isModalOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [isModalOpen]);
 
   return (
     <>
-      {/* ================= PROFILE FORM ================= */}
+      {/* ================= PAGE (BLUR BEHIND UPLOAD GRID) ================= */}
       <div
-        className="
-
-        "
+        className={`ml-auto mt-12 pb-20 transition-all duration-300 my-portfolio
+        ${isModalOpen ? "blur-sm pointer-events-none select-none" : ""}`}
       >
         {/* HEADER */}
-        <div
-          className="
-            flex
-            mb-6
-            items-center gap-4
-          "
-        >
-          <h3
-            className="
-              text-xl font-semibold
-            "
-          >
-            My Profile
-          </h3>
-          <div
-            className="
-              flex-1
-              h-px
-              bg-[#2B2B2B]
-            "
-          />
+        <div className="flex items-center gap-4 mb-6">
+          <h3 className="text-xl font-semibold whitespace-nowrap">My Portfolio</h3>
+          <div className="flex-1 h-px bg-[#2B2B2B]" />
         </div>
 
-        {/* PROFILE BAR */}
-        {/* PROFILE BAR */}
-        <div
-          className="
-    flex flex-col
-    w-full
-    px-6 py-6
-    bg-[#FEFEFE]
-    rounded-xl
-    border-[0.5px] border-[#CEFF1B]
-    relative
-    gap-6
-    backdrop-blur-3xl
-    profile-card
-    md:flex-row md:items-center md:justify-between
-  "
-        >
-          {/* LEFT */}
-          <div className="flex items-center gap-3">
-            {/* AVATAR */}
-            <div
-              onClick={() => setOpenImageModal(true)}
-              className="
-    relative
-    w-20 h-20
-    rounded-full
-    bg-[#D9D9D9]
-    cursor-pointer
-    flex items-center justify-center
-  "
-            >
-              {avatarUrl ? (
+        {/* MAIN */}
+        <div className="border-2 border-white rounded-2xl p-6 mb-10">
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="relative h-[417px] bg-gray-200 rounded-xl overflow-hidden">
+              {mainProject.coverUrl ? (
                 <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="w-full h-full rounded-full object-cover"
+                  src={mainProject.coverUrl}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
               ) : null}
-              {/* EDIT BADGE */}
-              <span
-                className="
-    absolute
-    bottom-0 right-0
-    w-7 h-7
-    rounded-full
-    flex items-center justify-center
-    shadow-lg
-    bg-white
-    profile-avatar-badge
-  "
+              <button
+                type="button"
+                onClick={openUploadForMain}
+                className="absolute inset-0 m-auto bg-[#CEFF1B] px-4 py-2 rounded"
+                disabled={isSaving || isLoading}
               >
-                <img
-                  src="/edit.svg"
-                  alt="Edit"
-                  className="w-4 h-4"
-                />
-              </span>
+                Upload Photo
+              </button>
 
-
+              <button
+                type="button"
+                onClick={() => setUploadStep(null)}
+                className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center
+                  bg-red-500 text-white rounded-full text-sm shadow-md hover:bg-red-600"
+                title="Close"
+              >
+                ✕
+              </button>
             </div>
 
+            <div className="space-y-4">
+              <Input
+                label="Title"
+                value={mainProject.title}
+                onChange={(v) => setMainProject({ ...mainProject, title: v })}
+              />
+              <Textarea
+                label="Description"
+                limit={150}
+                value={mainProject.desc}
+                onChange={(v) => setMainProject({ ...mainProject, desc: v })}
+              />
+              <Input
+                label="Project cost"
+                numericOnly
+                value={mainProject.cost}
+                onChange={(v) => setMainProject({ ...mainProject, cost: v })}
+              />
+            </div>
+          </div>
+        </div>
 
-            {/* NAME */}
-            <span
-              className="
-        text-[22px]
-        font-semibold
-        text-gray-900
-        profile-name
-      "
-            >
-              {personalInfoLoading ? "Loading..." : displayName}
-            </span>
+        {/* PROJECTS GRID */}
+        <div className="border-2 border-white rounded-xl p-6 mb-6 flex flex-col">
+          <div className="max-h-[520px] overflow-y-auto px-4 pb-4 -mx-4 custom-scroll">
+            <div className="grid md:grid-cols-3 gap-6">
+              {projects.map((project) => (
+                <div key={project.id} className="space-y-3">
+                  <div className="relative h-[250px] bg-gray-200 rounded-xl">
+                    {project.coverUrl ? (
+                      <img
+                        src={project.coverUrl}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover rounded-xl"
+                      />
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => openUploadForProject(project)}
+                      className="absolute inset-0 m-auto bg-[#CEFF1B] px-3 py-1 rounded text-xs"
+                      disabled={isSaving || isLoading}
+                    >
+                      Change Photo
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => removeProject(project.id)}
+                      className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center
+                        bg-red-500 text-white rounded-full text-sm"
+                      title="Remove"
+                      disabled={isSaving || isLoading}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <Input
+                    label="Title"
+                    value={project.title}
+                    onChange={(v) => updateProject(project.id, "title", v)}
+                  />
+                  <Textarea
+                    label="Description"
+                    limit={150}
+                    value={project.desc}
+                    onChange={(v) => updateProject(project.id, "desc", v)}
+                  />
+                  <Input
+                    label="Cost"
+                    small
+                    numericOnly
+                    value={project.cost}
+                    onChange={(v) => updateProject(project.id, "cost", v)}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* RIGHT */}
+          <div className="flex justify-end mt-6 pt-4 border-t border-white/20">
+            <button
+              type="button"
+              onClick={addProject}
+              className="bg-[#CEFF1B] border-[0.6px] border-black px-4 py-2 rounded"
+              disabled={isSaving || isLoading}
+            >
+              Add more
+            </button>
+          </div>
+        </div>
+
+        {/* ACTIONS */}
+        <div className="flex justify-end gap-4">
           <button
-            onClick={() => setOpenFriends(true)}
-            className="
-      flex
-      px-6 py-2.5
-      font-medium
-      bg-[#CEFF1B]
-      rounded-lg
-      border border-[#2B2B2B]
-      items-center justify-center
-      gap-2
-      hover:opacity-90
-      self-start
-      md:self-center
-    "
+            type="button"
+            onClick={handleDiscard}
+            disabled={isSaving || isLoading}
+            className="px-4 py-2 border-[0.6px] border-black rounded"
           >
-            <img
-              src="/Vector.svg"
-              alt="Friends"
-              className="w-5 h-5"
-            />
-            Friend List
+            Discard
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveChanges}
+            disabled={isSaving || isLoading}
+            className="bg-[#CEFF1B] border-[0.6px] border-black px-4 py-2 rounded"
+          >
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         </div>
 
-
-        {/* FORM */}
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </div>
 
-      {/* ================= IMAGE MODAL ================= */}
-      {openImageModal && (
+      {/* ================= BACKDROP (BLUR DARK) =================
+          ✅ behind UploadGrid but above page
+      */}
+      {isModalOpen && (
         <div
-          className="
-            z-50 flex
-            md:mt-20 p-4 md:p-0
-            fixed inset-0 items-center justify-center image-modal
-            backdrop-blur-sm bg-black/30
-          "
-        >
-          <div
-            className="
-              flex flex-col items-center
-              w-[90%] max-w-[380px] h-auto max-h-[90vh] overflow-y-auto
-              p-5 md:p-6
-              rounded-2xl
-              image-modal-card relative
-            "
-          >
-            <button
-              onClick={() => {
-                setOpenImageModal(false);
-                setSelectedFile(null);
-                setSelectedImage(null);
-                setZoom(0);
-                setAvatarError("");
-              }}
-              className="
-                text-red-500 font-bold
-                absolute top-4 right-4
-              "
-            >
-              ✕
-            </button>
-
-            <h3
-              className="
-                mb-6
-                text-center font-semibold text-gray-800
-              "
-            >
-              Resize and adjust <br /> your photo
-            </h3>
-
-            <div
-              className="
-                flex
-                w-full aspect-square max-w-[280px]
-                mb-5 mx-auto
-                bg-[#2B2B2B]
-                rounded-xl
-                items-center justify-center
-                relative overflow-hidden
-              "
-              onClick={() => {
-                if (!avatarBusy) fileRef.current?.click();
-              }}
-            >
-              {selectedImage || avatarUrl ? (
-                <>
-                  <img
-                    src={selectedImage || avatarUrl}
-                    alt="Preview"
-                    className="preview-image w-full h-full object-cover transition-transform duration-200"
-                    style={{ transform: `scale(${1 + zoom / 100})` }}
-                  />
-                  {/* CIRCULAR PREVIEW OVERLAY */}
-                  <div
-                    className="
-                      absolute inset-0
-                      pointer-events-none
-                      flex items-center justify-center
-                    "
-                  // style={{
-                  //   background: "radial-gradient(circle, transparent 130px, rgba(0,0,0,0.5) 130px)"
-                  // }}
-                  >
-                    <div
-                      className="
-                        w-[230px] h-[230px] md:w-[250px] md:h-[250px]
-                        rounded-full
-                        border-2 border-white/50
-                      "
-                    />
-                  </div>
-                </>
-              ) : (
-                <button
-                  onClick={() => fileRef.current.click()}
-                  className="
-                    w-[157px] h-[58.41px]
-                    text-sm
-                    bg-white
-                    rounded
-                  "
-                >
-                  Select Image
-                </button>
-              )}
-              <input type="file" ref={fileRef} hidden onChange={handleFileChange} />
-            </div>
-
-            <p
-              className="
-                mb-2
-                text-xs text-center text-red-500
-                -mt-6
-              "
-            >
-              {avatarError || "Maximum upload size: 10 MB"}
-            </p>
-            <div
-              className="
-                flex w-full max-w-[280px] mx-auto
-                mb-6
-                items-center justify-between gap-3
-                zoom-bar
-              "
-            >
-              {/* MINUS */}
-              <button
-                onClick={() => setZoom(Math.max(0, zoom - 10))}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <img
-                  src="/minus.svg"
-                  alt="Decrease"
-                  className="w-5 h-5 filter invert brightness-0"
-                />
-              </button>
-
-              {/* RANGE */}
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={zoom}
-                onChange={(e) => setZoom(parseInt(e.target.value))}
-                className="
-                  flex-1
-                  accent-[#CEFF1B]
-                "
-              />
-
-              {/* PLUS */}
-              <button
-                onClick={() => setZoom(Math.min(100, zoom + 10))}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <img
-                  src="/plus.svg"
-                  alt="Increase"
-                  className="w-5 h-5 filter invert brightness-0"
-                />
-              </button>
-            </div>
-
-            <div className="w-full space-y-2">
-              <button
-                onClick={handleUploadAvatar}
-                disabled={avatarBusy}
-              className="
-                w-full
-                mt-auto py-3
-                font-medium
-                bg-[#CEFF1B]
-                rounded-md
-                disabled:opacity-60
-              "
-            >
-                {avatarBusy ? "Uploading..." : "Upload Photo"}
-              </button>
-
-              {avatarUrl ? (
-                <button
-                  onClick={handleDeleteAvatar}
-                  disabled={avatarBusy}
-                  className="w-full py-3 font-medium rounded-md border border-[#2B2B2B] bg-white disabled:opacity-60"
-                >
-                  {avatarBusy ? "Please wait..." : "Remove Photo"}
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
+          className="fixed inset-0 z-[900] bg-black/30 backdrop-blur-sm"
+          onClick={() => setUploadStep(null)}
+        />
       )}
 
-      {/* ================= FRIEND LIST MODAL ================= */}
-      {openFriends && <FriendListModal onClose={() => setOpenFriends(false)} />}
+      {/* ================= UPLOAD GRID =================
+          ✅ grid stays visible in BOTH "grid" and "success"
+          ✅ when "success" => grid becomes blurred + disabled
+      */}
+      {(uploadStep === "grid" || uploadStep === "success") && (
+        <UploadGrid
+          blurred={uploadStep === "success"}
+          onBack={() => setUploadStep(null)}
+          onSelect={handleUploadSelected}
+        />
+      )}
+
+      {/* ================= SUCCESS MODAL (TOP) ================= */}
+      {uploadStep === "success" && <UploadSuccess onBack={() => setUploadStep(null)} />}
     </>
   );
 }
 
-/* ================= FRIEND LIST MODAL ================= */
+/* ================= UPLOAD GRID ================= */
 
-function FriendListModal({ onClose }) {
-  const [tab, setTab] = useState("list");
+function UploadGrid({ onSelect, onBack, blurred }) {
+  const fileRef = useRef(null);
 
-  const [friendList, setFriendList] = useState(
-    Array.from({ length: 10 }, (_, i) => ({
-      id: i,
-      name: "User Name",
-    }))
-  );
+  const [files, setFiles] = useState([]);
+  const [visibleSlots] = useState(9);
+  const [activeIndex, setActiveIndex] = useState(null);
 
-  const [suggestionList, setSuggestionList] = useState(
-    Array.from({ length: 10 }, (_, i) => ({
-      id: i + 100,
-      name: "User Name",
-    }))
-  );
+  const openPicker = () => fileRef.current?.click();
 
-  const removeFriend = (id) => {
-    setFriendList(friendList.filter((u) => u.id !== id));
+  const handleFiles = (e) => {
+    const selected = Array.from(e.target.files || []);
+    if (activeIndex === null || selected.length === 0) return;
+
+    setFiles((prev) => {
+      const updated = [...prev];
+      updated[activeIndex] = selected[0];
+      return updated;
+    });
+
+    setActiveIndex(null);
+    e.target.value = "";
   };
-
-  const removeSuggestion = (id) => {
-    setSuggestionList(suggestionList.filter((u) => u.id !== id));
-  };
-
-  const currentList = tab === "list" ? friendList : suggestionList;
 
   return (
-    <div
-      className="
-        z-50 flex
-        md:mt-20 p-4 md:p-0
-        bg-black/60
-        backdrop-blur-sm
-        fixed inset-0 items-center justify-center friend-modal
-      "
-    >
+    <div className="fixed inset-0 z-[950] flex items-center justify-center pointer-events-auto">
       <div
-        className="w-[95%] max-w-[620px] max-h-[90vh] p-5 md:p-8 rounded-[16px] flex flex-col friend-modal-card relative bg-white dark:bg-[#121212] border-2 border-[#CEFF1B] dark:border-[#CEFF1B] shadow-[0_0_40px_rgba(206,255,27,0.5)] dark:shadow-[0_0_50px_rgba(206,255,27,0.6)] transition-colors"
+        className={`upload-card rounded-2xl p-4 w-[95%] max-w-[820px] h-auto max-h-[90vh] flex flex-col bg-white shadow-[0_0_20px_#CEFF1B] transition-all duration-200
+        ${blurred ? "blur-sm scale-[0.98] pointer-events-none select-none opacity-95" : ""}`}
       >
-        <button
-          onClick={onClose}
-          className="
-            text-gray-600 text-lg
-            absolute top-4 right-4
-          "
-        >
-          ✕
-        </button>
-
-        {/* TABS */}
-        <div
-          className="
-            flex
-            flex-wrap
-            mb-1 md:mb-3
-            font-semibold
-            justify-center gap-4 md:gap-16
-          "
-        >
+        {/* HEADER */}
+        <div className="upload-header flex items-center gap-3 mb-3 shrink-0">
           <button
-            onClick={() => setTab("list")}
-            className={`
-              px-5 py-1.5
-              rounded-lg
-              ${tab === "list" ? "bg-[#CEFF1B]" : ""}
-            `}
+            type="button"
+            onClick={onBack}
+            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100"
+            title="Back"
           >
-            Your List
+            <img src="/backarrow.svg" alt="back" />
           </button>
 
+          <h4 className="text-sm font-medium">Select and upload your file</h4>
+
           <button
-            onClick={() => setTab("suggestions")}
-            className={`
-              px-5 py-1.5
-              rounded-lg
-              ${tab === "suggestions" ? "bg-[#CEFF1B]" : ""}
-            `}
+            type="button"
+            onClick={onBack}
+            className="ml-auto w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#CEFF1B]"
+            title="Close"
           >
-            Suggestions
+            ✕
           </button>
         </div>
 
-        <div
-          className="
-            h-[1px]
-            mb-2 md:mb-3
-            bg-[#000000]
-            divider
-          "
-        />
+        {/* GRID */}
+        <div className="grid grid-cols-3 gap-4 flex-1 overflow-y-auto pr-2 custom-scroll">
+          {Array.from({ length: visibleSlots }).map((_, i) => {
+            const file = files[i];
 
-        {/* SEARCH */}
-        <div
-          className="
-            mb-3 md:mb-5
-            relative
-          "
-        >
-          <input
-            placeholder="Search here"
-            className="
-              w-full
-              px-5 py-2.5
-              text-sm text-left
-              bg-white
-              rounded-full border border-gray-300
-              placeholder:text-center focus:outline-none focus:ring-0 focus:border-gray-300
-            "
-          />
-
-          <span
-            className="
-              text-gray-500
-              pointer-events-none
-              absolute right-5 top-2.5
-            "
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-          </span>
-        </div>
-
-        {/* LIST */}
-        <div
-          className="
-            overflow-y-auto
-            max-h-[360px]
-            pr-2 space-y-5
-            custom-scroll
-          "
-        >
-          {currentList.map((u) => (
-            <div
-              key={u.id}
-              className="
-                flex
-                items-center justify-between
-              "
-            >
+            return (
               <div
-                className="
-                  flex
-                  items-center gap-4
-                "
+                key={i}
+                onClick={() => {
+                  setActiveIndex(i);
+                  openPicker();
+                }}
+                className="upload-slot relative h-[110px] rounded-xl flex items-center justify-center cursor-pointer overflow-hidden bg-gray-100"
               >
-                <div
-                  className="
-                    w-11 h-11
-                    bg-[#D9D9D9]
-                    rounded-full
-                  "
-                />
-                <span
-                  className="
-                    text-sm
-                  "
-                >
-                  {u.name}
-                </span>
-              </div>
+                {/* ✅ COVER IMAGE BADGE */}
+                {i === 0 && (
+                  <span className="absolute inset-0 z-10 flex items-center justify-center px-2">
+                    <span className="bg-[#CEFF1B] text-black font-medium text-[10px] sm:text-xs px-2 py-[3px] rounded max-w-[90%] text-center whitespace-normal leading-tight">
+                      Upload Cover Image
+                    </span>
+                  </span>
+                )}
 
-              {tab === "list" ? (
-                <div
-                  className="
-                    flex
-                    gap-3
-                  "
-                >
-                  <button
-                    className="
-                      px-4 py-1.5
-                      text-xs
-                      bg-[#CEFF1B]
-                      rounded-md
-                    "
-                  >
-                    Following
-                  </button>
-                  <button
-                    onClick={() => removeFriend(u.id)}
-                    className="
-                      px-4 py-1.5
-                      text-xs
-                      border rounded-md
-                    "
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <div
-                  className="
-                    flex
-                    items-center gap-3
-                  "
-                >
-                  <button
-                    className="
-                      px-5 py-1.5
-                      text-xs
-                      bg-[#CEFF1B]
-                      rounded-md
-                    "
-                  >
-                    Follow
-                  </button>
-                  <button
-                    onClick={() => removeSuggestion(u.id)}
-                    className="
-                      text-gray-500
-                    "
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+                {/* ✅ FILE PREVIEW */}
+                {file ? (
+                  <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    {/* ✅ show icons only for NON-cover slots */}
+                    {i !== 0 && (
+                      <div className="relative">
+                        <img src="/video2.svg" className="w-10 mr-8 mt-2 opacity-60" alt="" />
+                        <img src="/video1.svg" className="w-12 absolute -right-2 -top-3 opacity-60" alt="" />
+                        <div className="absolute bottom-4 right-5 w-6 h-6 rounded-full bg-[#CEFF1B] flex items-center justify-center">
+                          +
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-end items-center mt-3 shrink-0">
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className="upload-btn-cancel px-4 py-2 rounded-lg text-sm border border-black"
+            >
+              Cancel
+            </button>
+
+            {files.filter(Boolean).length > 0 && (
+              <button
+                type="button"
+                onClick={() => onSelect(files.filter(Boolean))}
+                className="upload-btn-confirm px-5 py-2 rounded-lg text-sm font-medium bg-[#CEFF1B] border border-black"
+              >
+                Upload
+              </button>
+            )}
+          </div>
+        </div>
+
+        <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleFiles} className="hidden" />
+      </div>
+    </div>
+  );
+}
+
+/* ================= SUCCESS (TOP OF GRID) ================= */
+
+function UploadSuccess({ onBack }) {
+  return (
+    <div className="fixed inset-0 z-[1001] flex items-center justify-center pointer-events-auto p-4">
+      <div className="upload-success-card rounded-2xl w-[90%] max-w-[600px] h-auto min-h-[300px] md:h-[400px] py-10 flex flex-col items-center justify-center shadow-[0_0_20px_#CEFF1B] bg-white dark:bg-[#2B2B2B]">
+        <div className="w-24 h-24 bg-[#CEFF1B] rounded-full flex items-center justify-center mb-6">
+          <img src="/right.svg" alt="" />
+        </div>
+
+        <h3 className="text-2xl font-semibold mb-8 text-black dark:text-white text-center px-4">
+          You have successfully uploaded!
+        </h3>
+
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onBack}
+            className="upload-btn-confirm px-12 py-3 rounded-lg bg-[#CEFF1B] border border-black font-semibold text-black transition-transform hover:scale-105"
+          >
+            Back
+          </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ================= INPUTS ================= */
+
+function Input({ label, placeholder, small, numericOnly, value, onChange }) {
+  return (
+    <div>
+      <label className="block mb-1 font-medium">{label}</label>
+      <input
+        placeholder={placeholder}
+        value={value ?? ""}
+        onChange={(e) => {
+          let val = e.target.value;
+          if (numericOnly) {
+            val = val.replace(/[^0-9]/g, "");
+          }
+          onChange?.(val);
+        }}
+        className={`${small ? "w-40" : "w-full"} border border-black rounded-md px-3 py-2 bg-transparent text-sm
+        outline-none focus:outline-none focus:!border-transparent focus:ring-0 focus:shadow-[0_0_15px_#CEFF1B] placeholder:text-gray-400`}
+      />
+    </div>
+  );
+}
+
+function Textarea({ label, placeholder, limit, value, onChange }) {
+  const text = value ?? "";
+
+  return (
+    <div>
+      <label className="block mb-1 font-medium">{label}</label>
+      <textarea
+        placeholder={placeholder}
+        rows={3}
+        value={text}
+        maxLength={limit}
+        onChange={(e) => onChange?.(e.target.value)}
+        className="w-full border border-black rounded-md px-3 py-2 bg-transparent text-sm resize-none
+        outline-none focus:outline-none focus:!border-transparent focus:ring-0 focus:shadow-[0_0_15px_#CEFF1B] placeholder:text-gray-400"
+      />
+      {limit && (
+        <p className="text-xs text-red-500 mt-1">
+          {text.length}/{limit} characters
+        </p>
+      )}
     </div>
   );
 }
