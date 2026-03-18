@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('portfolio_projects', function (Blueprint $table): void {
-			$table->id()->primary()->autoIncrement()->change();
+			// $table->id()->primary()->autoIncrement()->change();
 			$table->foreignId('portfolio_id')->constrained('portfolios')->cascadeOnDelete()->change();
             $table->index('portfolio_id')->change();
 		});
@@ -29,7 +29,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('portfolio_projects', function (Blueprint $table): void {
-			$table->id()->primary()->autoIncrement()->change();
+			// $table->id()->primary()->autoIncrement()->change();
 			$table->foreignId('portfolio_id')->constrained('portfolios')->cascadeOnDelete()->change();
             $table->index('portfolio_id')->change();
 		});
