@@ -22,15 +22,15 @@ return new class extends Migration
                 ->on('portfolios')
                 ->cascadeOnDelete();
         });
-        Schema::table('portfolio_projects', function (Blueprint $table) {
+        Schema::table('portfolio_media', function (Blueprint $table) {
             $table->primary('id');
-            // Add index (if not exists)
-            $table->index('portfolio_id');
+            // Add index
+            $table->index('project_id');
 
             // Add foreign key
-            $table->foreign('portfolio_id')
+            $table->foreign('project_id')
                 ->references('id')
-                ->on('portfolios')
+                ->on('portfolio_projects')
                 ->cascadeOnDelete();
         });
     }
@@ -51,15 +51,15 @@ return new class extends Migration
                 ->on('portfolios')
                 ->cascadeOnDelete();
         });
-        Schema::table('portfolio_projects', function (Blueprint $table) {
+        Schema::table('portfolio_media', function (Blueprint $table) {
             $table->primary('id');
-            // Add index (if not exists)
-            $table->index('portfolio_id');
+            // Add index
+            $table->index('project_id');
 
             // Add foreign key
-            $table->foreign('portfolio_id')
+            $table->foreign('project_id')
                 ->references('id')
-                ->on('portfolios')
+                ->on('portfolio_projects')
                 ->cascadeOnDelete();
         });
     }
