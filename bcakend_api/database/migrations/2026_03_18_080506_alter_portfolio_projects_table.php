@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('portfolio_projects', function (Blueprint $table) {
-            $table->primary('id');
+            // $table->primary('id');
             // Add index (if not exists)
             $table->index('portfolio_id');
 
