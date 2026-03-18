@@ -1,25 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
-/* ================= PAGES ================= */
 import Home from "./features/landing/pages/Home";
 import User from "./features/dashboard/pages/User";
 import DesktopLogin from "./features/auth/pages/DesktopLogin";
 import DesktopSignup from "./features/auth/pages/DesktopSignup";
 import DesktopForgotPassword from "./features/auth/pages/DesktopForgotPassword";
 import DesktopEmailVerification from "./features/auth/pages/DesktopEmailVerification";
-import OAuthSuccess from "./features/auth/pages/OAuthSuccess";
-
 import CreatorOnboarding from "./features/onboarding/pages/CreatorOnboarding";
-
-/* ================ COMPONENTS ================= */
 import RoleSelection from "./features/onboarding/components/ForClient/RoleSelection";
 import WorkTypeSelection from "./features/onboarding/components/ForClient/WorkTypeSelection";
 import GoalsSelection from "./features/onboarding/components/ForClient/GoalsSelection";
 import ClientNeeds from "./features/onboarding/components/ForClient/ClientNeeds";
 import BusinessDetails from "./features/onboarding/components/ForClient/BusinessDetails";
 import SetupWorkspace from "./features/onboarding/components/ForClient/SetupWorkspace";
-
 import WorkTypeSelectionForCreator from "./features/onboarding/components/ForCreator/WorkTypeSelectionForCreator";
 import CreatorGoalsSelection from "./features/onboarding/components/ForCreator/CreatorGoalsSelection";
 import CreatorNeeds from "./features/onboarding/components/ForCreator/CreatorNeeds";
@@ -34,14 +27,22 @@ import PublicUserProfile from "./features/dashboard/pages/PublicUserProfile";
 import SoloContractListing from "./features/marketplace/pages/SoloContractListing";
 import Dashboard from "./features/dashboard/pages/Dashboard";
 import ManageTeam from "./features/dashboard/pages/ManageTeam";
-
 import MilestonesPage from "./features/marketplace/pages/MilestonesPage";
 import SoloMilestonesPage from "./features/marketplace/pages/SoloMilestonesPage";
 import CreateServiceListing from "./features/marketplace/pages/CreateServiceListing";
+import CreateDigitalProduct from "./features/marketplace/pages/CreateDigitalProduct";
 import AddNewListing from "./features/marketplace/pages/AddNewListing";
-
-import RequireAuth from "./components/routing/RequireAuth";
-import RequireOnboardingComplete from "./components/routing/RequireOnboardingComplete";
+import Marketplace from "./features/marketplace/pages/Marketplace";
+import TeamServiceListing from "./features/marketplace/pages/TeamServiceListing";
+import DigitalProductListing from "./features/marketplace/pages/DigitalProductListing";
+import MyListings from "./features/marketplace/pages/MyListings";
+import CreateCourse from "./features/marketplace/pages/CreateCourse";
+import CourseListing from "./features/marketplace/pages/CourseListing";
+import OrderDeliverables from "./features/marketplace/pages/OrderDeliverables";
+import CourseDeliverables from "./features/marketplace/pages/CourseDeliverables";
+import WebinarDeliverables from "./features/marketplace/pages/WebinarDeliverables";
+import WebinarListing from "./features/marketplace/pages/WebinarListing";
+import CreateWebinar from "./features/marketplace/pages/CreateWebinar";
 
 
 export default function App() {
@@ -50,12 +51,10 @@ export default function App() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem(THEME_KEY) || "light";
   });
-
   useEffect(() => {
     // body classes safe way
     document.body.classList.remove("light", "dark");
     document.body.classList.add(theme);
-
     localStorage.setItem(THEME_KEY, theme);
   }, [theme]);
 
@@ -63,56 +62,50 @@ export default function App() {
     <Router>
       <div className="app">
         <Routes>
-          {/* MAIN */}
           <Route path="/" element={<Home />} />
-
-          {/* PROFILE */}
-          <Route
-            path="/setting"
-            element={
-              <RequireOnboardingComplete>
-                <User theme={theme} setTheme={setTheme} />
-              </RequireOnboardingComplete>
-            }
-          />
-
-          {/* AUTH */}
+          <Route path="/setting" element={<User theme={theme} setTheme={setTheme} />} />
           <Route path="/desktop-forgot-password" element={<DesktopForgotPassword />} />
-          <Route path="/forgot-password" element={<DesktopForgotPassword />} />
-          <Route path="/reset-password" element={<DesktopForgotPassword />} />
           <Route path="/desktop-email-verification" element={<DesktopEmailVerification />} />
           <Route path="/login" element={<DesktopLogin />} />
           <Route path="/signup" element={<DesktopSignup />} />
-          <Route path="/oauth/success" element={<OAuthSuccess />} />
-
-          <Route path="/onboarding" element={<RequireAuth><CreatorOnboarding /></RequireAuth>} />
-          <Route path="/role-selection" element={<RequireAuth><RoleSelection /></RequireAuth>} />
-          <Route path="/client-work-type-selection" element={<RequireAuth><WorkTypeSelection /></RequireAuth>} />
-          <Route path="/client-goals-selection" element={<RequireAuth><GoalsSelection /></RequireAuth>} />
-          <Route path="/client-needs" element={<RequireAuth><ClientNeeds /></RequireAuth>} />
-          <Route path="/client-business-details" element={<RequireAuth><BusinessDetails /></RequireAuth>} />
-          <Route path="/client-setup-workspace" element={<RequireAuth><SetupWorkspace /></RequireAuth>} />
-          <Route path="/client-role-selection" element={<RequireAuth><RoleSelection /></RequireAuth>} />
-
-          <Route path="/creator-work-type-selection" element={<RequireAuth><WorkTypeSelectionForCreator /></RequireAuth>} />
-          <Route path="/creator-goals-selection" element={<RequireAuth><CreatorGoalsSelection /></RequireAuth>} />
-          <Route path="/creator-needs" element={<RequireAuth><CreatorNeeds /></RequireAuth>} />
-          <Route path="/creator-setup-workspace" element={<RequireAuth><SetupWorkspaceForCreator /></RequireAuth>} />
-          <Route path="/creator-profile-setup" element={<RequireAuth><CreatorProfileSetup /></RequireAuth>} />
-          <Route path="/client-profile-setup" element={<RequireAuth><ClientProfileSetup /></RequireAuth>} />
-          <Route path="/create-team" element={<RequireOnboardingComplete><CreateTeam theme={theme} setTheme={setTheme} /></RequireOnboardingComplete>} />
-          <Route path="/team-profile" element={<RequireOnboardingComplete><TeamProfileLight theme={theme} setTheme={setTheme} /></RequireOnboardingComplete>} />
+          <Route path="/onboarding" element={<CreatorOnboarding />} />
+          <Route path="/role-selection" element={<RoleSelection />} />
+          <Route path="/client-work-type-selection" element={<WorkTypeSelection />} />
+          <Route path="/client-goals-selection" element={<GoalsSelection />} />
+          <Route path="/client-needs" element={<ClientNeeds />} />
+          <Route path="/client-business-details" element={<BusinessDetails />} />
+          <Route path="/client-setup-workspace" element={<SetupWorkspace />} />
+          <Route path="/client-role-selection" element={<RoleSelection />} />
+          <Route path="/creator-work-type-selection" element={<WorkTypeSelectionForCreator />} />
+          <Route path="/creator-goals-selection" element={<CreatorGoalsSelection />} />
+          <Route path="/creator-needs" element={<CreatorNeeds />} />
+          <Route path="/creator-setup-workspace" element={<SetupWorkspaceForCreator />} />
+          <Route path="/creator-profile-setup" element={<CreatorProfileSetup />} />
+          <Route path="/client-profile-setup" element={<ClientProfileSetup />} />
+          <Route path="/create-team" element={<CreateTeam theme={theme} setTheme={setTheme} />} />
+          <Route path="/team-profile" element={<TeamProfileLight theme={theme} setTheme={setTheme} />} />
           <Route path="/public-team-profile" element={<PublicTeamProfile theme={theme} setTheme={setTheme} />} />
-          <Route path="/user-profile" element={<RequireOnboardingComplete><UserProfile theme={theme} setTheme={setTheme} /></RequireOnboardingComplete>} />
+          <Route path="/user-profile" element={<UserProfile theme={theme} setTheme={setTheme} />} />
           <Route path="/public-user-profile" element={<PublicUserProfile theme={theme} setTheme={setTheme} />} />
-          <Route path="/solo-contracts-listing" element={<SoloContractListing theme={theme} setTheme={setTheme} />} />
-          <Route path="/milestones" element={<RequireOnboardingComplete><MilestonesPage theme={theme} setTheme={setTheme} /></RequireOnboardingComplete>} />
-          <Route path="/solo-milestones" element={<RequireOnboardingComplete><SoloMilestonesPage theme={theme} setTheme={setTheme} /></RequireOnboardingComplete>} />
-          <Route path="/create-service-listing" element={<RequireOnboardingComplete><CreateServiceListing theme={theme} setTheme={setTheme} /></RequireOnboardingComplete>} />
-          <Route path="/dashboard" element={<RequireOnboardingComplete><Dashboard theme={theme} setTheme={setTheme} /></RequireOnboardingComplete>} />
-          <Route path="/manage-team" element={<RequireOnboardingComplete><ManageTeam theme={theme} setTheme={setTheme} /></RequireOnboardingComplete>} />
-          <Route path="/add-listing" element={<RequireOnboardingComplete><AddNewListing theme={theme} setTheme={setTheme} /></RequireOnboardingComplete>} />
-
+          <Route path="/contracts-listing" element={<SoloContractListing theme={theme} setTheme={setTheme} />} />
+          <Route path="/milestones" element={<MilestonesPage theme={theme} setTheme={setTheme} />} />
+          <Route path="/solo-milestones" element={<SoloMilestonesPage theme={theme} setTheme={setTheme} />} />
+          <Route path="/create-service-listing" element={<CreateServiceListing theme={theme} setTheme={setTheme} />} />
+          <Route path="/create-digital-product" element={<CreateDigitalProduct theme={theme} setTheme={setTheme} />} />
+          <Route path="/dashboard" element={<Dashboard theme={theme} setTheme={setTheme} />} />
+          <Route path="/manage-team" element={<ManageTeam theme={theme} setTheme={setTheme} />} />
+          <Route path="/add-listing" element={<AddNewListing theme={theme} setTheme={setTheme} />} />
+          <Route path="/marketplace" element={<Marketplace theme={theme} setTheme={setTheme} />} />
+          <Route path="/team-service-listing" element={<TeamServiceListing theme={theme} setTheme={setTheme} />} />
+          <Route path="/digital-product-listing" element={<DigitalProductListing theme={theme} setTheme={setTheme} />} />
+          <Route path="/my-listings" element={<MyListings theme={theme} setTheme={setTheme} />} />
+          <Route path="/create-course" element={<CreateCourse theme={theme} setTheme={setTheme} />} />
+          <Route path="/course-listing" element={<CourseListing theme={theme} setTheme={setTheme} />} />
+          <Route path="/order-deliverables" element={<OrderDeliverables theme={theme} setTheme={setTheme} />} />
+          <Route path="/course-deliverables" element={<CourseDeliverables theme={theme} setTheme={setTheme} />} />
+          <Route path="/webinar-deliverables" element={<WebinarDeliverables theme={theme} setTheme={setTheme} />} />
+          <Route path="/webinar-listing" element={<WebinarListing theme={theme} setTheme={setTheme} />} />
+          <Route path="/create-webinar" element={<CreateWebinar theme={theme} setTheme={setTheme} />} />
         </Routes>
       </div>
     </Router>

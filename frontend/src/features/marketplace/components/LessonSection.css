@@ -1,0 +1,249 @@
+.lesson-section {
+  width: 100%;
+  margin-top: 24px;
+  background: #fcfcfc;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  padding: 32px;
+}
+
+.user-page.dark .lesson-section {
+  background: #1a1a1a;
+  border-color: #333;
+}
+
+.lesson-section-header {
+  margin-bottom: 32px;
+}
+
+.lesson-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.user-page.dark .lesson-section-title {
+  color: #ffffff;
+}
+
+.lesson-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.lesson-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.lesson-card-header {
+  background: #ceff1b;
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+  font-weight: 600;
+  color: #000;
+}
+
+.lesson-media-box {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 20px;
+  background: #fdfdfd;
+  border: 1.5px dashed #d0d0d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.user-page.dark .lesson-media-box {
+  background: #141414;
+  border-color: #444;
+}
+
+.lesson-media-box.has-media {
+  border-style: solid;
+  border-color: #dbf132;
+}
+
+.lesson-media-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.lesson-media-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+}
+
+.lesson-remove-btn {
+  width: 24px;
+  height: 24px;
+  background: #ff4d4f;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 4px 10px rgba(255, 77, 79, 0.3);
+}
+
+.lesson-add-media-btn {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.lesson-placeholder-icons {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lesson-svg-v2 {
+  width: 40px;
+  margin-right: 32px;
+  margin-top: 8px;
+  opacity: 0.6;
+}
+
+.lesson-svg-v1 {
+  width: 48px;
+  position: absolute;
+  right: -8px;
+  top: -12px;
+  opacity: 0.6;
+}
+
+.lesson-plus-circle-small {
+  position: absolute;
+  bottom: 22px;
+  right: 25px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #dbf132;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  font-weight: bold;
+  font-size: 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.user-page.dark .lesson-svg-v1,
+.user-page.dark .lesson-svg-v2 {
+  filter: brightness(0.8) contrast(1.2);
+}
+
+.lesson-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lesson-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.user-page.dark .lesson-label {
+  color: #ccc;
+}
+
+.lesson-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.user-page.dark .lesson-input {
+  background: #141414;
+  border-color: #333;
+  color: #fff;
+}
+
+.lesson-input:focus {
+  outline: none;
+  border-color: #dbf132;
+  box-shadow: 0 0 0 2px rgba(219, 241, 50, 0.1);
+}
+
+.lesson-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 14px;
+  min-height: 100px;
+  resize: vertical;
+  transition: all 0.2s;
+}
+
+.user-page.dark .lesson-textarea {
+  background: #141414;
+  border-color: #333;
+  color: #fff;
+}
+
+.lesson-textarea:focus {
+  outline: none;
+  border-color: #dbf132;
+  box-shadow: 0 0 0 2px rgba(219, 241, 50, 0.1);
+}
+
+.lesson-section-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.lesson-add-more-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #dbf132;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lesson-add-more-btn:hover {
+  background: #c8dc2e;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .lesson-grid {
+    grid-template-columns: 1fr;
+  }
+}

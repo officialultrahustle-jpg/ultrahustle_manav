@@ -1,0 +1,166 @@
+.faq-section-container {
+  width: 100%;
+  margin-top: 32px;
+}
+
+.faq-heading {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #111;
+}
+
+.user-page.dark .faq-heading {
+  color: #fff;
+}
+
+.faq-card {
+  border: 1px solid #CEFF1B;
+  border-radius: 12px;
+  padding: 24px;
+  background: transparent;
+  margin-bottom: 24px;
+}
+
+.faq-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.faq-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+}
+
+.user-page.dark .faq-header h3 {
+  color: #fff;
+}
+
+.delete-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #555;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.delete-btn:hover:not(:disabled) {
+  color: #ff4444;
+}
+
+.delete-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.user-page.dark .delete-btn {
+  color: #bbb;
+}
+
+.faq-field {
+  margin-top: 15px;
+}
+
+.faq-field label {
+  display: block;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #444;
+}
+
+.user-page.dark .faq-field label {
+  color: #ccc;
+}
+
+.faq-field input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d7d7d7;
+  font-size: 14px;
+  height: 40px;
+  background: transparent;
+  outline: none;
+  transition: all 0.2s;
+  color: #111;
+}
+
+.faq-field input:focus {
+  border-color: transparent;
+  box-shadow: 0 0 15px #CEFF1B;
+}
+
+.user-page.dark .faq-field input {
+  border-color: #CEFF1B;
+  color: #fff;
+}
+
+.user-page.dark .faq-field input:focus {
+  border-color: transparent;
+}
+
+.add-btn {
+  margin-top: 15px;
+  background: #CEFF1B;
+  border: 1px solid black;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #000;
+}
+
+.faq-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.draft-btn {
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #f4f4f4;
+  color: #111;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.draft-btn:hover {
+  background: #e8e8e8;
+}
+
+.user-page.dark .draft-btn {
+  background: #2A2A2A;
+  color: #fff;
+  border-color: #444;
+}
+
+.save-btn {
+  padding: 10px 40px;
+  border-radius: 8px;
+  border: 1px solid black;
+  background: #CEFF1B;
+  color: #000;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-btn:hover {
+  background: #bdff1b;
+}

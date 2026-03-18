@@ -46,7 +46,7 @@ export default function AddNewListing({ theme, setTheme }) {
       desc: "For templates, files, tools, or resources you can sell again and again.",
       subdesc:
         "Upload once, set your license and price, and deliver instantly without manual work.",
-      route: "#",
+      route: "/create-digital-product",
     },
     {
       id: "course",
@@ -55,7 +55,7 @@ export default function AddNewListing({ theme, setTheme }) {
       desc: "For teaching step by step.",
       subdesc:
         "Organize lessons, control access, and give buyers a clean, distraction-free learning experience.",
-      route: "#",
+      route: "/create-course",
     },
     {
       id: "webinar",
@@ -64,7 +64,7 @@ export default function AddNewListing({ theme, setTheme }) {
       desc: "For live sessions or recorded events.",
       subdesc:
         "Schedule, collect registrations, and deliver your session without juggling multiple tools.",
-      route: "#",
+      route: "/create-webinar",
     },
   ];
 

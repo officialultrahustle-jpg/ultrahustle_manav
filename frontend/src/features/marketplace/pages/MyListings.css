@@ -1,0 +1,571 @@
+/* MyListings.css */
+:root {
+    --mylis-bg: #f5f5f5;
+    --mylis-card: #ffffff;
+    --mylis-text: #1a1a1a;
+    --mylis-muted: #666;
+    --mylis-border: #e2e2e2;
+    --mylis-accent: #CEFF1B;
+
+    /* Dark mode */
+    --d-mylis-bg: #0b0b0b;
+    --d-mylis-card: #141414;
+    --d-mylis-text: #f0f0f0;
+    --d-mylis-muted: #a8a8a8;
+    --d-mylis-border: #2a2a2a;
+}
+
+.mylis-shell {
+    background: var(--mylis-bg);
+    min-height: 100vh;
+}
+
+.mylis-main {
+    flex: 1;
+    padding: 30px 40px;
+    width: 100%;
+}
+
+/* Header Section */
+.mylis-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.mylis-add-btn {
+    background: var(--mylis-accent);
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.mylis-add-btn:hover {
+    box-shadow: 0 0 15px rgba(206, 255, 27, 0.6);
+    transform: translateY(-2px);
+}
+
+.mylis-title {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--mylis-text);
+    margin-bottom: 0;
+}
+
+.mylis-subtitle {
+    font-size: 15px;
+    color: var(--mylis-muted);
+    margin-bottom: 30px;
+}
+
+/* Top Toolbar: Search + Filter */
+.mylis-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.mylis-search-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.mylis-search-icon {
+    position: absolute;
+    left: 16px;
+    color: #888;
+}
+
+.mylis-search-input {
+    width: 100%;
+    height: 48px;
+    padding: 0 16px 0 44px;
+    border-radius: 8px;
+    border: 1px solid var(--mylis-border);
+    font-size: 15px;
+    background: #fff;
+    color: var(--mylis-text);
+    outline: none;
+    transition: all 0.2s;
+}
+
+.mylis-search-input::placeholder {
+    color: #a0a0a0;
+}
+
+.mylis-search-input:focus {
+    border-color: transparent !important;
+    box-shadow: 0 0 15px rgba(206, 255, 27, 0.6);
+}
+
+.mylis-status-wrap {
+    position: relative;
+    width: 200px;
+}
+
+.mylis-status-btn {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 14px;
+    border-radius: 12px;
+
+    background: rgba(235, 235, 235, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: #2b2b2b;
+    font-size: 13px;
+
+    cursor: pointer;
+    transition: 0.25s ease;
+}
+
+.mylis-status-btn .arrow {
+    font-size: 10px;
+    color: #2b2b2b;
+    transition: 0.25s ease;
+}
+
+.mylis-status-btn.open .arrow {
+    transform: rotate(180deg);
+    color: var(--mylis-accent);
+    text-shadow: 0 0 6px rgba(206, 255, 27, 0.8);
+}
+
+.status-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 100%;
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    background: #F2F2F2;
+    border: 1px solid rgba(206, 255, 27, 0.35);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+    z-index: 9999;
+}
+
+.status-menu li {
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: 0.2s ease;
+    color: #111;
+    font-size: 13px;
+    border-radius: 4px;
+}
+
+.status-menu li:hover {
+    background: var(--mylis-accent);
+    box-shadow: 0 0 0 3px rgba(206, 255, 27, 0.18);
+}
+
+.status-menu li.active {
+    background: var(--mylis-accent);
+    font-weight: 600;
+}
+
+/* Tabs Section */
+.mylis-tabs-wrap {
+    display: flex;
+    background: var(--mylis-accent);
+    border-radius: 8px;
+    padding: 4px;
+    margin-bottom: 30px;
+    overflow-x: auto;
+}
+
+.mylis-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    border: none;
+    background: transparent;
+    color: #111;
+    font-weight: 600;
+    font-size: 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 0 20px;
+    transition: background 0.2s ease;
+}
+
+.mylis-tab.active {
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.mylis-tab:not(.active):hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.mylis-tab svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Cards Grid */
+.mylis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+}
+
+.mylis-card {
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid var(--mylis-border);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    z-index: 1;
+    cursor: pointer;
+}
+
+.mylis-card.active-dropdown {
+    z-index: 50;
+}
+
+.mylis-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+}
+
+.mylis-card-img-wrap {
+    width: 100%;
+    height: 160px;
+    background: #e9e9e9;
+    overflow: hidden;
+    border-radius: 11px 11px 0 0;
+}
+
+.mylis-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: grayscale(100%);
+}
+
+.mylis-card-body {
+    padding: 20px;
+}
+
+.mylis-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.mylis-card-icon-title {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.mylis-card-type-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid var(--mylis-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mylis-card-type-icon svg {
+    color: #333;
+}
+
+.mylis-card-info h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--mylis-text);
+    line-height: 1.2;
+}
+
+.mylis-card-info p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--mylis-muted);
+}
+
+.mylis-card-dots {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Dropdown styling */
+.mylis-dropdown-wrap {
+    position: relative;
+}
+
+.mylis-dropdown-menu {
+    position: absolute;
+    right: 0;
+    top: 32px;
+    background: rgba(254, 254, 254, 0.40);
+    border: none;
+    border-radius: 8.727px;
+    box-shadow: 0 1px 4px 0 var(--mylis-accent);
+    backdrop-filter: blur(27px);
+    width: 180px;
+    z-index: 20;
+    overflow: hidden;
+    padding: 8px 0;
+}
+
+.mylis-dropdown-header {
+    padding: 8px 14px 12px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #5C5C5C;
+    border-bottom: none;
+}
+
+.mylis-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    font-size: 15px;
+    font-weight: 400;
+    color: #5C5C5C;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.mylis-dropdown-item:not(.danger):hover {
+    background: var(--mylis-accent);
+}
+
+.mylis-dropdown-item svg {
+    opacity: 0.7;
+}
+
+.mylis-dropdown-divider {
+    height: 1px;
+    background: var(--mylis-accent);
+    margin: 4px 0;
+    border: none;
+}
+
+.mylis-dropdown-item.danger {
+    color: #ef4444;
+    font-weight: 500;
+}
+
+.mylis-dropdown-item.danger:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.mylis-badge {
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.mylis-badge.active {
+    background: var(--mylis-accent);
+    color: #111;
+}
+
+.mylis-badge.paused {
+    background: #e2e2e2;
+    color: #333;
+}
+
+.mylis-badge.draft {
+    background: #d4d4d4;
+    color: #333;
+}
+
+/* ================= DARK MODE ================= */
+.user-page.dark .mylis-shell,
+.user-page.dark {
+    background: var(--d-mylis-bg);
+}
+
+.user-page.dark .mylis-title {
+    color: var(--d-mylis-text);
+}
+
+.user-page.dark .mylis-subtitle {
+    color: var(--d-mylis-muted);
+}
+
+.user-page.dark .mylis-search-input {
+    background: #121212;
+    border: 1px solid white !important;
+
+    color: var(--d-mylis-text);
+}
+
+.user-page.dark .mylis-status-btn {
+    background: rgba(43, 43, 43, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.user-page.dark .mylis-search-input:focus {
+    border-color: transparent !important;
+    box-shadow: 0 0 20px rgba(206, 255, 27, 0.5);
+}
+
+.user-page.dark .mylis-status-btn .arrow {
+    color: #fff;
+}
+
+.user-page.dark .status-menu {
+    background: rgba(11, 11, 11, 0.9);
+    border-color: rgba(206, 255, 27, 0.35);
+}
+
+.user-page.dark .status-menu li {
+    color: #fff;
+}
+
+.user-page.dark .status-menu li:hover,
+.user-page.dark .status-menu li.active {
+    color: #000;
+}
+
+.user-page.dark .mylis-tabs-wrap {
+    background: var(--mylis-accent);
+    border: none;
+}
+
+.user-page.dark .mylis-tab {
+    color: #111;
+}
+
+.user-page.dark .mylis-tab.active {
+    background: #fff;
+    color: #111;
+}
+
+.user-page.dark .mylis-tab:not(.active):hover {
+    background: rgba(206, 255, 27, 0.08);
+}
+
+.user-page.dark .mylis-card {
+    background: var(--d-mylis-card);
+    border-color: var(--d-mylis-border);
+}
+
+.user-page.dark .mylis-card-img-wrap {
+    background: #2a2a2a;
+}
+
+.user-page.dark .mylis-card-info h3 {
+    color: var(--d-mylis-text);
+}
+
+.user-page.dark .mylis-card-info p {
+    color: var(--d-mylis-muted);
+}
+
+.user-page.dark .mylis-card-type-icon {
+    border-color: var(--d-mylis-border);
+}
+
+.user-page.dark .mylis-card-type-icon svg {
+    color: #fff;
+}
+
+.user-page.dark .mylis-card-dots {
+    color: #bbb;
+}
+
+/* Dark mode dropdown - matches light mode */
+.user-page.dark .mylis-dropdown-menu {
+    background: transparent;
+    border: none;
+    box-shadow: 0 1px 4px 0 var(--mylis-accent);
+}
+
+.user-page.dark .mylis-dropdown-header {
+    color: #5C5C5C;
+}
+
+.user-page.dark .mylis-dropdown-item {
+    color: #5C5C5C;
+}
+
+.user-page.dark .mylis-dropdown-divider {
+    background: var(--mylis-accent);
+}
+
+.user-page.dark .mylis-dropdown-item.danger {
+    color: #ef4444;
+}
+
+.user-page.dark .mylis-dropdown-item.danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.user-page.dark .mylis-badge.paused {
+    background: #2a2a2a;
+    color: #ddd;
+}
+
+.user-page.dark .mylis-badge.draft {
+    background: #333;
+    color: #ccc;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .mylis-main {
+        padding: 20px;
+    }
+
+    .mylis-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .mylis-status-select {
+        width: 100%;
+    }
+
+    .mylis-tabs-wrap {
+        justify-content: flex-start;
+    }
+
+    .mylis-tab {
+        flex: 0 0 auto;
+    }
+}

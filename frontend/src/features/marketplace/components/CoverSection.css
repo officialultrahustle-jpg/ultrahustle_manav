@@ -1,0 +1,108 @@
+.cover-section-container {
+  width: 100%;
+}
+
+.cover-card {
+  background: #fff;
+  border: 1px solid #CEFF1B;
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+}
+
+.user-page.dark .cover-card {
+  background: transparent;
+}
+
+.cover-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #111;
+}
+
+.user-page.dark .cover-title {
+  color: #fff;
+}
+
+.cover-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 10px;
+}
+
+.user-page.dark .cover-label {
+  color: #bbb;
+}
+
+.cover-upload-box {
+  width: 100%;
+  position: relative;
+}
+
+.cover-preview-wrapper {
+  width: 100%;
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cover-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-remove-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cover-remove-btn:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.cover-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #CEFF1B;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-page.dark .cover-placeholder {
+  background: #2A2A2A;
+}
+
+.cover-upload-btn {
+  background: #CEFF1B;
+  color: #000;
+  border: 1px solid black;
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cover-upload-btn:hover {
+  background: #bdff1b;
+}
