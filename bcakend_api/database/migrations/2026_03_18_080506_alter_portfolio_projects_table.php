@@ -18,7 +18,7 @@ return new class extends Migration
 		});
         Schema::table('portfolio_media', function (Blueprint $table): void {
 			$table->id()->primary()->autoIncrement()->change();
-			$table->foreignId('project_id')->constrained('portfolio_projects')->cascadeOnDelete();
+			$table->foreignId('project_id')->constrained('portfolio_projects')->cascadeOnDelete()->change();
             $table->index('project_id')->change();
 		});
     }
