@@ -19,22 +19,22 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
             // EMAIL
-            $table->boolean('messages')->default(true);
+            $table->boolean('messages')->default(false);
             $table->boolean('order')->default(false);
-            $table->boolean('reviews')->default(true);
+            $table->boolean('reviews')->default(false);
             $table->boolean('payment')->default(false);
-            $table->boolean('boost')->default(true);
+            $table->boolean('boost')->default(false);
             $table->boolean('listing')->default(false);
-            $table->boolean('system')->default(true);
+            $table->boolean('system')->default(false);
 
             // PUSH
             $table->boolean('project')->default(false);
-            $table->boolean('comments')->default(true);
+            $table->boolean('comments')->default(false);
             $table->boolean('forum')->default(false);
-            $table->boolean('team')->default(true);
+            $table->boolean('team')->default(false);
 
             // MARKETING
-            $table->boolean('marketing')->default(true);
+            $table->boolean('marketing')->default(false);
             $table->boolean('product')->default(false);
             $table->timestamps();
         });
