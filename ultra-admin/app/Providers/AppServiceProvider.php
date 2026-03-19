@@ -19,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        if (str_starts_with(request()->getRequestUri(), '/ultra-admin')) {
+            \URL::forceRootUrl(config('app.url'));
+        }
     }
 }
