@@ -434,12 +434,20 @@ export default function ClientNeeds() {
                             key={category.id}
                             onClick={() => toggleCategory(category.id)}
                             className={`
-                              flex items-center gap-3.5 px-[clamp(12px,2vw,24px)] py-[clamp(8px,1.5vh,14px)] rounded-2xl cursor-pointer border-2 transition-all duration-300 backdrop-blur-sm justify-center whitespace-nowrap flex-1
-                              ${isSelected
-                                ? "bg-[#CEFF1B] border-black/50 shadow-md scale-105"
-                                : "bg-transparent border-[#2B2B2B] "
+  flex items-center gap-3.5 
+  px-[clamp(12px,2vw,24px)] 
+  py-[clamp(8px,1.5vh,14px)] 
+  rounded-2xl cursor-pointer 
+  border-2 
+  transition-all duration-300 
+  backdrop-blur-sm 
+  justify-center whitespace-nowrap flex-1
+
+  ${isSelected
+                                ? "bg-[#CEFF1B] border-black shadow-md scale-105"
+                                : "bg-white/40 border-black/20 hover:border-black/40 hover:bg-white/60"
                               }
-                            `}
+`}
                           >
                             <div
                               className={`p-1.5 rounded-xl flex items-center justify-center shrink-0 bg-[#CEFF1B]`}
