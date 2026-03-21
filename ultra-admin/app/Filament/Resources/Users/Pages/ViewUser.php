@@ -59,13 +59,15 @@ class ViewUser extends ViewRecord
                     ])
                     ->visible(fn ($record) => $record->role === 'freelancer')
                     ->columns(2),
+
                 // 🏢 CLIENT ONBOARDING
                 Section::make('Client Onboarding')
                     ->schema([
                         TextEntry::make('clientOnboarding.company_name')->formatStateUsing(fn ($state) => $state ? ucfirst($state) : ''),
                         TextEntry::make('clientOnboarding.industry')->formatStateUsing(fn ($state) => $state ? ucfirst($state) : ''),
                     ])
-                    ->visible(fn ($record) => $record->role === 'client'),
+                    ->visible(fn ($record) => $record->role === 'client')
+                    ->columns(2),
                     
                 // 📄 PERSONAL INFO
                 Section::make('Personal Info')
@@ -82,6 +84,26 @@ class ViewUser extends ViewRecord
                                     $record->personalInfo->pincode ?? null,
                                 ])->filter()->map(fn ($item) => ucfirst($item))->implode(', ');
                             }),
+                    ])
+                    ->columns(2),
+                // User Notifications
+                Section::make('Notifications')
+                    ->schema([
+                        TextEntry::make('notifications')
+                            ->label('Notifications')
+                            ->state(function ($record) {
+                                if (!$record->userNotification) return [];
+                                return collect($record->userNotification->toArray())
+                                    ->filter(function ($value, $key) {
+                                        return $value == 1 && !in_array($key, ['id', 'user_id', 'created_at', 'updated_at']);
+                                    })
+                                    ->keys()
+                                    ->map(function ($key) {
+                                        return ucfirst(str_replace('_', ' ', $key));
+                                    })
+                                    ->toArray();
+                            })
+                            ->badge()
                     ])
                     ->columns(2),
             ]);
