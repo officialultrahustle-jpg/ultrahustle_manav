@@ -11,17 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        /* Schema::table('portfolio_media', function (Blueprint $table) {
-            $table->primary('id');
-            // Add index
-            $table->index('project_id');
-
-            // Add foreign key
-            $table->foreign('project_id')
-                ->references('id')
-                ->on('portfolio_projects')
-                ->cascadeOnDelete();
-        }); */
+        Schema::table('portfolio_media', function (Blueprint $table) {
+            $table->primary('id')->autoIncrement()->change();
+        });
     }
 
     /**
