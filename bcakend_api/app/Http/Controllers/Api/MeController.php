@@ -16,16 +16,21 @@ class MeController extends Controller
         $user = $request->user();
 
         DB::transaction(function () use ($user): void {
+
+            // Revoke tokens (correct)
             $user->tokens()->delete();
 
-            $user->personalInfo()->delete();
+            if ($user->personalInfo) {
+                $user->personalInfo()->delete();
+            }
 
+            // ✅ Soft delete user
             $user->delete();
         });
 
         return response()->json([
             'status' => true,
-            'message' => 'Account deleted.',
+            'message' => 'Account scheduled for deletion after 90 days.',
             'data' => [
                 'uh_user_id' => $user->uh_user_id,
             ],

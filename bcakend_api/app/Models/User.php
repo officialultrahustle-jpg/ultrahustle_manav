@@ -15,6 +15,7 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
+    protected $dates = ['deleted_at'];
     protected static function booted(): void
     {
         static::creating(function (self $user): void {
