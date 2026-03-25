@@ -14,7 +14,7 @@ const NavbarLight = ({ onDropdownChange, theme = "light", toggleSidebar, isSideb
 
   const [activeSearchTab, setActiveSearchTab] = useState("");
   const [activeViewAll, setActiveViewAll] = useState(null);
-
+  const [username, setUsername] = useState("");
   // ✅ (optional) input value
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -83,6 +83,17 @@ const NavbarLight = ({ onDropdownChange, theme = "light", toggleSidebar, isSideb
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      const onboarding = JSON.parse(localStorage.getItem("onboarding"));
+      if (onboarding?.username) {
+        setUsername(onboarding.username);
+      }
+    } catch (e) {
+      console.error("Invalid onboarding data");
+    }
   }, []);
 
   // Sample messages data
@@ -661,7 +672,9 @@ const NavbarLight = ({ onDropdownChange, theme = "light", toggleSidebar, isSideb
 
             {isDropdownOpen && (
               <div className="user-dropdown">
-                <div className="dropdown-greeting">Hi, First Name!</div>
+                <div className="dropdown-greeting">
+                  Hi, {username || "User"}!
+                </div>
                 <div className="dropdown-divider"></div>
                 <a href="user-profile" className="dropdown-item">
                   My Profile
