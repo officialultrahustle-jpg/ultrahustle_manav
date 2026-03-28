@@ -192,12 +192,12 @@ export default function Security() {
         <p className="mb-4 text-[16px] ">Currently login</p>
 
         {/* Current Session */}
-        {activitiesLoading ? (
+        {activityDates ? (
           <p className="text-sm text-gray-500">Loading devices...</p>
         ) : activityDates.length === 0 ? (
           <p className="text-sm text-gray-500">No login activity found.</p>
         ) : (
-          activityDates.map((activity) => (
+          activityDates?.slice(0, 3).map((activity) => (
             <div
               key={activity.id}
               className="flex bg-transparent border border-black items-center justify-between rounded-md p-4 mb-3"
