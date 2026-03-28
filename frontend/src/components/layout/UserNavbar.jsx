@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import "./NavbarLight.css";
 import {logout} from "../../features/auth/api/authApi";
-import {getUserName} from "../../features/dashboard/api/personalInfoApi";
+import {getUserName, getMyPersonalInfo} from "../../features/dashboard/api/personalInfoApi";
 
 const NavbarLight = ({ onDropdownChange, theme = "light", toggleSidebar, isSidebarOpen: externalIsSidebarOpen }) => {
   const location = useLocation();
@@ -18,7 +18,7 @@ const NavbarLight = ({ onDropdownChange, theme = "light", toggleSidebar, isSideb
   const [username, setUsername] = useState("");
   // ✅ (optional) input value
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [avatar, setAvatar] = useState("");
   const isAnyDropdownOpen =
     isDropdownOpen || isMessagesOpen || isNotificationsOpen || isSearchOpen;
 
@@ -111,6 +111,16 @@ const NavbarLight = ({ onDropdownChange, theme = "light", toggleSidebar, isSideb
       console.error("Invalid onboarding data");
     }
   }, []); */
+
+  const loadPersonalInfo = async () => {
+    const info = await getMyPersonalInfo();
+    const data = info?.data ?? [];
+    setAvatar(data.avatar_url);
+  };
+
+  useEffect(() => {
+    loadPersonalInfo();
+  }, []);
 
   // Sample messages data
   const messagesData = [
@@ -661,29 +671,15 @@ const NavbarLight = ({ onDropdownChange, theme = "light", toggleSidebar, isSideb
               role="button"
               tabIndex={0}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="34"
-                height="34"
-                viewBox="0 0 34 34"
-                fill="none"
-              >
-                <path
-                  d="M16.8845 0.804016C8.00321 0.804016 0.803955 8.00327 0.803955 16.8846C0.803955 25.7658 8.00321 32.9651 16.8845 32.9651C25.7658 32.9651 32.965 25.7658 32.965 16.8846C32.965 8.00327 25.7658 0.804016 16.8845 0.804016Z"
-                  fill="#5C5C5C"
-                  stroke="#5C5C5C"
-                  strokeWidth="1.60805"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M4.4563 27.0907C4.4563 27.0907 8.04065 22.5142 16.8849 22.5142C25.7292 22.5142 29.3152 27.0907 29.3152 27.0907M16.8849 16.886C18.1644 16.886 19.3914 16.3777 20.2961 15.473C21.2008 14.5683 21.7091 13.3413 21.7091 12.0618C21.7091 10.7824 21.2008 9.55534 20.2961 8.65063C19.3914 7.74593 18.1644 7.23767 16.8849 7.23767C15.6055 7.23767 14.3785 7.74593 13.4737 8.65063C12.569 9.55534 12.0608 10.7824 12.0608 12.0618C12.0608 13.3413 12.569 14.5683 13.4737 15.473C14.3785 16.3777 15.6055 16.886 16.8849 16.886Z"
-                  stroke="#CEFF1B"
-                  strokeWidth="1.60805"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <img
+                src={avatar || "/default-avatar.png"}
+                alt={username || "User"}
+                className="w-[34px] h-[34px] rounded-full object-cover border border-[#5C5C5C]"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "/default-avatar.png";
+                }}
+              />
             </div>
 
             {isDropdownOpen && (
