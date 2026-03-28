@@ -62,13 +62,16 @@ export default function Security() {
     const loadActivities = async () => {
       try {
         setActivitiesLoading(true);
+
         const res = await getMyActivities();
-        const data = res?.data ?? [];
+        const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
 
         if (!mounted) return;
-        setActivityDates(res);
+
+        setActivityDates(data);
       } catch (e) {
         console.error("Failed to load activities", e);
+        if (mounted) setActivityDates([]);
       } finally {
         if (mounted) setActivitiesLoading(false);
       }
@@ -192,12 +195,12 @@ export default function Security() {
         <p className="mb-4 text-[16px] ">Currently login</p>
 
         {/* Current Session */}
-        {activityDates ? (
+        {activitiesLoading ? (
           <p className="text-sm text-gray-500">Loading devices...</p>
         ) : activityDates.length === 0 ? (
           <p className="text-sm text-gray-500">No login activity found.</p>
         ) : (
-          activityDates?.slice(0, 3).map((activity) => (
+          activityDates.slice(0, 3).map((activity) => (
             <div
               key={activity.id}
               className="flex bg-transparent border border-black items-center justify-between rounded-md p-4 mb-3"
@@ -205,17 +208,19 @@ export default function Security() {
               <div>
                 <p className="text-[16px] font-medium">
                   {activity.platform || "Unknown OS"}
-                  {activity.device ? ` • ${activity.device}` : ""}
+                  {activity.browser ? ` • ${activity.browser} ` : ""}
+                  {activity.device ? ` • ${activity.device} ` : ""}
                 </p>
-                <span className="text-[#0FB400]">  ● </span>
+
                 <p className="text-[16px] text-gray-500">
-                  IP: {activity.location || activity.ip_address || "Unknown location"}
+                  • IP: {activity.location || activity.ip_address || "Unknown location"}
                 </p>
 
                 {activity.is_current ? (
                   <p className="text-[16px] text-black flex items-center gap-1 dark:text-white">
-                    <span className="text-[#0FB400]">●</span>
-                    Your Current Session Active at {activity?.last_active_at
+                    <span className="text-[#0FB400]"> &nbsp;●</span>
+                    Your Current Session • Active at{" "}
+                    {activity?.last_active_at
                       ? new Date(activity.last_active_at).toLocaleString("en-IN", {
                           day: "2-digit",
                           month: "short",
@@ -228,7 +233,17 @@ export default function Security() {
                   </p>
                 ) : (
                   <p className="text-[16px] text-gray-400">
-                    {activity.last_active_human || "Recently active"}
+                    • Last active at{" "}
+                    {activity?.last_active_at
+                      ? new Date(activity.last_active_at).toLocaleString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        })
+                      : "Recently active"}
                   </p>
                 )}
               </div>

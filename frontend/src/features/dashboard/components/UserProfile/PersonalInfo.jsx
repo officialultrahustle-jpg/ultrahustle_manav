@@ -387,7 +387,6 @@ export default function PersonalInformation() {
 
     try {
       const info = await getMyPersonalInfo();
-      console.log(info);
       lastLoadedRef.current = info;
       applyLoadedPersonalInfo(info);
     } catch (err) {
