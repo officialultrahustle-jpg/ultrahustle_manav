@@ -145,30 +145,13 @@ const UserProfile = (props) => {
         averageRating: 4.3,
         members: 30,
       },
-      badges: ["Trusted Seller", "Fast Responder", "Quality Work"],
-      hashtags: ["#UI/UX", "#Web Design", "#React", "#Figma", "#Mobile"],
+      badges: [],
+      hashtags: [],
       about: [],
       whatWeDo: [],
-      skills: [
-        "Product Design",
-        "UI/UX Design",
-        "Design Systems",
-        "Mobile App Design",
-        "Prototyping",
-        "User Research",
-        "Responsive Design",
-        "Interaction Design",
-      ],
-      tools: [
-        "Notion",
-        "Tailwind CSS",
-        "Photoshop",
-        "Figma",
-        "Illustrator",
-        "TypeScript",
-        "Webflow",
-      ],
-      languages: ["English", "Hindi", "Tamil"],
+      skills: [],
+      tools: [],
+      languages: [],
       avatarUrl: "",
     }),
     [],
@@ -233,6 +216,7 @@ const UserProfile = (props) => {
       setPersonalInfoLoading(true);
       try {
         const res = await getMyPersonalInfo();
+        console.log(res);
         const data = res?.data ?? res;
 
         if (!mounted) return;
@@ -334,32 +318,7 @@ const UserProfile = (props) => {
     };
   }, [viewerUserId]);
 
-  const teams = [
-    {
-      id: 1,
-      name: "Design Systems Collective",
-      role: "Lead Designer",
-      members: 12,
-      avatar:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
-    },
-    {
-      id: 2,
-      name: "Design Systems Collective",
-      role: "UI/UX Designer",
-      members: 12,
-      avatar:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
-    },
-    {
-      id: 3,
-      name: "Design Systems Collective",
-      role: "Senior Designer",
-      members: 12,
-      avatar:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80",
-    },
-  ];
+  const teams = [];
 
   const defaultPortfolioData = useMemo(
     () => ({
@@ -418,7 +377,7 @@ const UserProfile = (props) => {
 
     const extractCost = (p) => {
       if (p?.cost_cents === null || p?.cost_cents === undefined || p?.cost_cents === "") return "";
-      const currency = String(p?.currency || "INR").trim();
+      const currency = String(p?.currency || "USD").trim();
       return `${currency} ${p.cost_cents}`;
     };
 
@@ -1602,7 +1561,8 @@ const UserProfile = (props) => {
                 className={`${theme === "dark" ? "user-page-dark" : ""}`}
               >
                 {/* ✅ OUTER BOX */}
-                <div className="teamsWrap">
+                {Array.isArray(teams) && teams.length > 0 && (
+                  <div className="teamsWrap">
                   <h3 className="teamsTitle">Teams</h3>
 
                   <div className="teamsRow">
@@ -1637,6 +1597,8 @@ const UserProfile = (props) => {
                     ))}
                   </div>
                 </div>
+                )}
+                
               </section>
             </main>
           </div>

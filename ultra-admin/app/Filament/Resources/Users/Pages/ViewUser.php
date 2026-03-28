@@ -84,6 +84,124 @@ class ViewUser extends ViewRecord
                                     $record->personalInfo->pincode ?? null,
                                 ])->filter()->map(fn ($item) => ucfirst($item))->implode(', ');
                             }),
+                        TextEntry::make('personalInfo.date_of_birth'),
+                        TextEntry::make('personalInfo.gender')->formatStateUsing(fn ($state) => $state ? ucfirst($state) : ''),
+                        TextEntry::make('personalInfo.title'),
+                        TextEntry::make('personalInfo.short_bio'),
+                        TextEntry::make('personalInfo.about'),
+                        TextEntry::make('personalInfo.availability')->formatStateUsing(fn ($state) => $state ? ucfirst($state) : ''),
+                        TextEntry::make('personalInfo.hashtags')
+                            ->label('Hashtags')
+                            ->state(function ($record) {
+                                $hashtags = $record->personalInfo?->hashtags;
+
+                                if (blank($hashtags)) {
+                                    return [];
+                                }
+
+                                // If stored as JSON array
+                                if (is_array($hashtags)) {
+                                    return collect($hashtags)
+                                        ->filter()
+                                        ->map(fn ($tag) => '#' . trim($tag))
+                                        ->toArray();
+                                }
+
+                                // If stored as comma-separated string
+                                if (is_string($hashtags)) {
+                                    return collect(explode(',', $hashtags))
+                                        ->map(fn ($tag) => trim($tag))
+                                        ->filter()
+                                        ->map(fn ($tag) => '#' . $tag)
+                                        ->toArray();
+                                }
+
+                                return [];
+                            })
+                            ->badge(),
+                        TextEntry::make('personalInfo.skills')->state(function ($record) {
+                                $skills = $record->personalInfo?->skills;
+
+                                if (blank($skills)) {
+                                    return [];
+                                }
+
+                                // If stored as JSON array
+                                if (is_array($skills)) {
+                                    return collect($skills)
+                                        ->filter()
+                                        ->map(fn ($tag) => trim($tag))
+                                        ->toArray();
+                                }
+
+                                // If stored as comma-separated string
+                                if (is_string($skills)) {
+                                    return collect(explode(',', $skills))
+                                        ->map(fn ($tag) => trim($tag))
+                                        ->filter()
+                                        ->map(fn ($tag) => $tag)
+                                        ->toArray();
+                                }
+
+                                return [];
+                            })
+                            ->badge()->color('success'),
+                        TextEntry::make('personalInfo.tools')
+                            ->state(function ($record) {
+                                $tools = $record->personalInfo?->tools;
+
+                                if (blank($tools)) {
+                                    return [];
+                                }
+
+                                // If stored as JSON array
+                                if (is_array($tools)) {
+                                    return collect($tools)
+                                        ->filter()
+                                        ->map(fn ($tag) =>trim($tag))
+                                        ->toArray();
+                                }
+
+                                // If stored as comma-separated string
+                                if (is_string($tools)) {
+                                    return collect(explode(',', $tools))
+                                        ->map(fn ($tag) => trim($tag))
+                                        ->filter()
+                                        ->map(fn ($tag) => $tag)
+                                        ->toArray();
+                                }
+
+                                return [];
+                            })
+                            ->badge()->color('info'),
+                        TextEntry::make('personalInfo.languages')
+                            ->state(function ($record) {
+                                $languages = $record->personalInfo?->languages;
+
+                                if (blank($languages)) {
+                                    return [];
+                                }
+
+                                // If stored as JSON array
+                                if (is_array($languages)) {
+                                    return collect($languages)
+                                        ->filter()
+                                        ->map(fn ($tag) =>trim($tag))
+                                        ->toArray();
+                                }
+
+                                // If stored as comma-separated string
+                                if (is_string($languages)) {
+                                    return collect(explode(',', $languages))
+                                        ->map(fn ($tag) => trim($tag))
+                                        ->filter()
+                                        ->map(fn ($tag) => $tag)
+                                        ->toArray();
+                                }
+
+                                return [];
+                            })
+                            ->badge()->color('gray'),
                     ])
                     ->columns(2),
                 // User Notifications
@@ -104,6 +222,7 @@ class ViewUser extends ViewRecord
                                     ->toArray();
                             })
                             ->badge()
+                            ->color('primary')
                     ])
                     ->columns(2),
             ]);

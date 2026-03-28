@@ -159,7 +159,7 @@ export default function MyPortfolio() {
         description: p.desc,
         // Backend expects `cost_cents` (see GET /api/v1/me/portfolio response)
         cost_cents: p.cost === "" ? null : Number.parseInt(String(p.cost), 10),
-        currency: "INR",
+        currency: "USD",
         sort_order: p._sort,
       })),
     };

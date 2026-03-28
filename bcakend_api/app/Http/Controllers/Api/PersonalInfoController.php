@@ -19,6 +19,7 @@ use App\Models\Country;
 use App\Models\State;
 use App\Models\City;
 use App\Models\Language;
+use App\Models\UserActivity;
 
 class PersonalInfoController extends Controller
 {
@@ -39,7 +40,7 @@ class PersonalInfoController extends Controller
         $uhUserId = $user->uh_user_id;
 
         $validated = $request->validated();
-
+        
         $username = $validated['username'] ?? null;
         if (! is_null($username) && $this->usernameTakenByAnotherUser($uhUserId, $username)) {
             return $this->errorResponse('Username already taken.', [
@@ -48,8 +49,8 @@ class PersonalInfoController extends Controller
         }
 
         $defaults = [
-            'first_name' => null,
-            'last_name' => null,
+            // 'first_name' => null,
+            // 'last_name' => null,
             'username' => null,
             'date_of_birth' => null,
             'contact_email' => null,
@@ -75,6 +76,9 @@ class PersonalInfoController extends Controller
         $data = array_merge($defaults, $validated);
 
         try {
+            $user->full_name = $request->full_name;
+            $user->save();
+
             $info = UserPersonalInfo::withTrashed()->firstOrNew(['uh_user_id' => $uhUserId]);
 
             if ($info->exists && method_exists($info, 'trashed') && $info->trashed()) {
@@ -327,6 +331,7 @@ class PersonalInfoController extends Controller
         }
 
         $displayName = $this->displayName(
+            fullName: (string) ($user->full_name ?? ''),
             firstName: (string) ($personal['first_name'] ?? ''),
             lastName: (string) ($personal['last_name'] ?? ''),
             username: (string) ($personal['username'] ?? ''),
@@ -349,12 +354,16 @@ class PersonalInfoController extends Controller
         return url('/storage/'.ltrim($path, '/'));
     }
 
-    private function displayName(string $firstName, string $lastName, string $username, string $email): string
+    private function displayName(string $fullName, string $firstName, string $lastName, string $username, string $email): string
     {
+        $fullName = trim($fullName);
         $firstName = trim($firstName);
         $lastName = trim($lastName);
         $username = trim($username);
-
+        
+        if($fullName !== ''){
+            return $fullName;
+        }
         $full = trim($firstName.' '.$lastName);
         if ($full !== '') {
             return $full;
@@ -446,5 +455,9 @@ class PersonalInfoController extends Controller
     }
     public function getLanguages(){
         return Language::select('id', 'value')->orderBy('value')->get();
+    }
+
+    public function getUserActivities(){
+        return UserActivity::get();
     }
 }

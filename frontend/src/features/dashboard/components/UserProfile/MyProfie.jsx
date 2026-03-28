@@ -70,7 +70,7 @@ export default function ProfileForm() {
   const normalized = normalizePersonalInfo(personalInfo);
 
   const displayName =
-    [normalized?.first_name ?? normalized?.firstName, normalized?.last_name ?? normalized?.lastName]
+    [normalized?.display_name ?? normalized?.first_name ?? normalized?.firstName, normalized?.last_name ?? normalized?.lastName]
       .filter(Boolean)
       .join(" ") ||
     normalized?.username ||

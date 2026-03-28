@@ -1,6 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { updateMyPassword } from "../../api/passwordApi";
+import { getMyActivities } from "../../api/personalInfoApi";
 
 export default function Security() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -14,7 +15,9 @@ export default function Security() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
+  const [activities, setActivities] = useState([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [activityDates, setActivityDates] = useState([]);
   const handleChangePassword = async () => {
     setError("");
     setSuccess("");
@@ -52,6 +55,31 @@ export default function Security() {
       setIsSaving(false);
     }
   };
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadActivities = async () => {
+      try {
+        setActivitiesLoading(true);
+        const res = await getMyActivities();
+        const data = res?.data ?? [];
+
+        if (!mounted) return;
+        setActivityDates(res);
+      } catch (e) {
+        console.error("Failed to load activities", e);
+      } finally {
+        if (mounted) setActivitiesLoading(false);
+      }
+    };
+
+    loadActivities();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <div className="">
@@ -164,31 +192,55 @@ export default function Security() {
         <p className="mb-4 text-[16px] ">Currently login</p>
 
         {/* Current Session */}
-        <div className="flex bg-transparent border border-black items-center justify-between rounded-md p-4 mb-3">
-          <div>
-            <p className="text-[16px] font-medium">Windows</p>
-            <p className="text-[16px] text-gray-500">Chennai, Tamil Nadu, India</p>
-            <p className="text-[16px] text-black flex items-center gap-1 dark:text-white">
-              <span className="text-[#0FB400]">●</span>
-              Your Current Session
-            </p>
-          </div>
-          <button className="bg-[#FF0000] border border-black text-white text-xs px-4 py-1.5 rounded-lg font-medium">
-            Log out
-          </button>
-        </div>
+        {activitiesLoading ? (
+          <p className="text-sm text-gray-500">Loading devices...</p>
+        ) : activityDates.length === 0 ? (
+          <p className="text-sm text-gray-500">No login activity found.</p>
+        ) : (
+          activityDates.map((activity) => (
+            <div
+              key={activity.id}
+              className="flex bg-transparent border border-black items-center justify-between rounded-md p-4 mb-3"
+            >
+              <div>
+                <p className="text-[16px] font-medium">
+                  {activity.platform || "Unknown OS"}
+                  {activity.device ? ` • ${activity.device}` : ""}
+                </p>
+                <span className="text-[#0FB400]">  ● </span>
+                <p className="text-[16px] text-gray-500">
+                  IP: {activity.location || activity.ip_address || "Unknown location"}
+                </p>
 
-        {/* Other Device */}
-        <div className="flex bg-transparent border border-black items-center justify-between rounded-md p-4">
-          <div>
-            <p className="text-[16px] font-medium">1 session on iPhone16</p>
-            <p className="text-[16px] text-gray-500">Chennai, Tamil Nadu, India</p>
-            <p className="text-[16px] text-gray-400">30 minutes ago</p>
-          </div>
-          <button className="bg-[#FF0000] border border-black text-white text-xs px-4 py-1.5 rounded-lg font-medium">
-            Log out
-          </button>
-        </div>
+                {activity.is_current ? (
+                  <p className="text-[16px] text-black flex items-center gap-1 dark:text-white">
+                    <span className="text-[#0FB400]">●</span>
+                    Your Current Session Active at {activity?.last_active_at
+                      ? new Date(activity.last_active_at).toLocaleString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                          hour12: true,
+                        })
+                      : "N/A"}
+                  </p>
+                ) : (
+                  <p className="text-[16px] text-gray-400">
+                    {activity.last_active_human || "Recently active"}
+                  </p>
+                )}
+              </div>
+
+              {!activity.is_current && (
+                <button className="bg-[#FF0000] border border-black text-white text-xs px-4 py-1.5 rounded-lg font-medium">
+                  Log out
+                </button>
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

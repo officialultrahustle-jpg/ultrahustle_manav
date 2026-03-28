@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo  } from "react";
 import "../../../onboarding/components/OnboardingSelect.css";
 import {
   getMyPersonalInfo,
@@ -36,9 +36,11 @@ export default function PersonalInformation() {
 
   const lastLoadedRef = useRef(null);
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  // const [firstName, setFirstName] = useState("");
+  // const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
+
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [street, setStreet] = useState("");
@@ -84,7 +86,9 @@ export default function PersonalInformation() {
   const [openPhoneCountry, setOpenPhoneCountry] = useState(false);
   const phoneCountryRef = useRef(null);
   const hasFetchedLanguages = useRef(false);
-
+  const [countrySearch, setCountrySearch] = useState("");
+  const [stateSearch, setStateSearch] = useState("");
+  const [citySearch, setCitySearch] = useState("");
     //get counties
     useEffect(() => {
       const fetchCountries = async () => {
@@ -164,6 +168,7 @@ export default function PersonalInformation() {
     const handleClickOutside = (event) => {
       if (countryRef.current && !countryRef.current.contains(event.target)) setOpenCountry(false);
       if (stateRef.current && !stateRef.current.contains(event.target)) setOpenState(false);
+      if (cityRef.current && !cityRef.current.contains(event.target)) setOpenCity(false);
       if (availabilityRef.current && !availabilityRef.current.contains(event.target)) setOpen(false);
       if (genderRef.current && !genderRef.current.contains(event.target)) setOpenGender(false);
       if(phoneCountryRef.current && ! phoneCountryRef.current.contains(event.target)) setOpenPhoneCountry(false);
@@ -336,9 +341,10 @@ export default function PersonalInformation() {
   const applyLoadedPersonalInfo = (info) => {
     const normalized = info?.data || info;
 
-    setFirstName(normalized?.first_name ?? normalized?.firstName ?? "");
-    setLastName(normalized?.last_name ?? normalized?.lastName ?? "");
+    // setFirstName(normalized?.first_name ?? normalized?.firstName ?? "");
+    // setLastName(normalized?.last_name ?? normalized?.lastName ?? "");
     setUsername(normalized?.username ?? "");
+    setFullName(normalized?.display_name ?? "");
 
     setEmail(normalized?.contact_email ?? normalized?.email ?? "");
 
@@ -381,6 +387,7 @@ export default function PersonalInformation() {
 
     try {
       const info = await getMyPersonalInfo();
+      console.log(info);
       lastLoadedRef.current = info;
       applyLoadedPersonalInfo(info);
     } catch (err) {
@@ -398,37 +405,13 @@ export default function PersonalInformation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const countryOptions = ["India", "United States"];
-
-  const stateOptions =
-    country === "India"
-      ? [
-        "Maharashtra",
-        "Delhi",
-        "Gujarat",
-        "Karnataka",
-        "Tamil Nadu",
-        "Uttar Pradesh",
-        "West Bengal",
-      ]
-      : country === "United States"
-        ? ["California", "Texas", "New York", "Florida"]
-        : [];
-  // ... (rest of the state and skills)
+  
   // (skipping for brevety in replacement chunk but keeping logic)
   const [skills, setSkills] = useState([
-    "Agile/Scrum",
-    "Accessibility",
-    "Front-end Development",
-    "Product Design",
-    "Design Systems",
+    
   ]);
   const [hashtag, setHashtag] = useState([
-    "Agile/Scrum",
-    "Accessibility",
-    "Front-end Development",
-    "Product Design",
-    "Design Systems",
+   
   ]);
   const [hashtagDraft, setHashtagDraft] = useState("");
   const availabilityOptions = [
@@ -438,10 +421,7 @@ export default function PersonalInformation() {
   ];
 
   const [tools, setTools] = useState([
-    "Figma",
-    "Illustrator",
-    "Photoshop",
-    "Tailwind CSS",
+   
   ]);
   const [toolsDraft, setToolsDraft] = useState("");
 
@@ -478,8 +458,9 @@ export default function PersonalInformation() {
     const finalLanguages = languages.map((l) => l.value);
 
     const payload = {
-      first_name: String(firstName || "").trim() || null,
-      last_name: String(lastName || "").trim() || null,
+      // first_name: String(firstName || "").trim() || null,
+      // last_name: String(lastName || "").trim() || null,
+      full_name: String(fullName || "").trim() || null,
       username: String(username || "").trim() || null,
       date_of_birth: toIsoDate(dob),
       contact_email: String(email || "").trim().toLowerCase() || null,
@@ -544,8 +525,9 @@ export default function PersonalInformation() {
         {/* ================= PERSONAL INFO ================= */}
         <Section title="Personal Information">
           <TwoCol>
-            <Input label="First Name" placeholder="First Name" value={firstName} onChange={setFirstName} />
-            <Input label="Last Name" placeholder="Last Name" value={lastName} onChange={setLastName} />
+            {/* <Input label="First Name" placeholder="First Name" value={firstName} onChange={setFirstName} />
+            <Input label="Last Name" placeholder="Last Name" value={lastName} onChange={setLastName} /> */}
+            <Input label="Full Name" placeholder="Full Name" value={fullName} onChange={setFullName} />
 
             {/* USERNAME */}
             <div>
@@ -569,6 +551,7 @@ export default function PersonalInformation() {
                   onFocus={() => setFocusedId("username")}
                   onBlur={() => setFocusedId(null)}
                   className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0"
+                  readOnly
                 />
               </div>
             </div>
@@ -610,7 +593,7 @@ export default function PersonalInformation() {
               </div>
             </div>
 
-            <Input label="Email Address" placeholder="example@gmail.com" value={email} onChange={setEmail} type="email" />
+            <Input label="Email Address" placeholder="example@gmail.com" value={email} onChange={setEmail} type="email" readOnly />
 
             {/* PHONE */}
             <div>
@@ -721,118 +704,235 @@ export default function PersonalInformation() {
           <TwoCol>
             <Input label="Street" placeholder="Street" value={street} onChange={setStreet} />
             {/* <Input label="City" placeholder="City" value={city} onChange={setCity} /> */}            
-              <div className={`onboarding-custom-select ${openCountry ? "active" : ""}`} ref={countryRef}>
+              <div
+                className={`onboarding-custom-select ${openCountry ? "active" : ""}`}
+                ref={countryRef}
+              >
                 <Label>Country</Label>
+
                 <div
                   className={`onboarding-selected-option ${openCountry ? "open" : ""}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setOpenCountry(!openCountry);
+                    setOpenCountry((prev) => !prev);
+
+                    if (!openCountry) {
+                      setCountrySearch("");
+                    }
                   }}
                 >
-                  <span className={!country ? "opacity-70" : ""}>
-                    {country || "Select country"}
-                  </span>
+                  <input
+                    type="text"
+                    value={openCountry ? countrySearch : country}
+                    placeholder="Select country"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenCountry(true);
+                    }}
+                    onFocus={() => {
+                      setOpenCountry(true);
+                      setCountrySearch("");
+                    }}
+                    onChange={(e) => {
+                      setCountrySearch(e.target.value);
+                      setOpenCountry(true);
+                    }}
+                    className="w-full bg-transparent outline-none border-none"
+                  />
                   <span className="onboarding-arrow">▼</span>
                 </div>
 
                 {openCountry && (
-                  <ul className="onboarding-options-list">
-                    {countries?.map((c) => (
-                      <li
-                        key={c.id}
-                        className={country === c.name ? "active" : ""}
-                        onClick={() => {
-                          setCountry(c.name);     // display
-                          setCountryId(c.id);     // 🔥 important
-                          setStateVal("");        // reset state
-                          setStateId("");
-                          setOpenCountry(false);
-                        }}
-                      >
-                        {c.name}
+                  <ul className="onboarding-options-list max-h-60 overflow-y-auto">
+                    {countries?.filter((c) =>
+                      c.name.toLowerCase().includes(countrySearch.toLowerCase())
+                    ).length > 0 ? (
+                      countries
+                        .filter((c) =>
+                          c.name.toLowerCase().includes(countrySearch.toLowerCase())
+                        )
+                        .map((c) => (
+                          <li
+                            key={c.id}
+                            className={country === c.name ? "active" : ""}
+                            onClick={() => {
+                              setCountry(c.name);
+                              setCountryId(c.id);
+                              setCountrySearch(c.name);
+                              setStateVal("");
+                              setStateId("");
+                              setCity("");
+                              setCityId("");
+                              setOpenCountry(false);
+                            }}
+                          >
+                            {c.name}
+                          </li>
+                        ))
+                    ) : (
+                      <li className="opacity-70 cursor-not-allowed px-3 py-2">
+                        No country found
                       </li>
-                    ))}
+                    )}
                   </ul>
                 )}
               </div>
            
 
             {/* STATE */}
-            <div>
+            <div
+              className={`onboarding-custom-select ${openState ? "active" : ""}`}
+              ref={stateRef}
+            >
               <Label>State</Label>
-              <div className={`onboarding-custom-select ${openState ? "active" : ""}`} ref={stateRef}>
-                <div
-                  className={`onboarding-selected-option ${openState ? "open" : ""}`}
+
+              <div
+                className={`onboarding-selected-option ${openState ? "open" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!countryId) return;
+
+                  setOpenState((prev) => !prev);
+
+                  if (!openState) {
+                    setStateSearch("");
+                  }
+                }}
+              >
+                <input
+                  type="text"
+                  value={openState ? stateSearch : stateVal}
+                  placeholder={countryId ? "Select state" : "Select country first"}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (countryId) setOpenState(!openState);
+                    if (!countryId) return;
+                    setOpenState(true);
                   }}
-                >
-                  <span className={!stateVal ? "opacity-70" : ""}>
-                    {stateVal || "Select state"}
-                  </span>
-                  <span className="onboarding-arrow">▼</span>
-                </div>
-
-                {openState && (
-                  <ul className="onboarding-options-list">
-                    {states.map((s) => (
-                      <li
-                        key={s.id}
-                        className={stateVal === s.name ? "active" : ""}
-                        onClick={() => {
-                          setStateVal(s.name);
-                          setStateId(s.id);
-
-                          setCity("");     // reset city
-                          setCityId("");
-
-                          setOpenState(false);
-                        }}
-                      >
-                        {s.name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                  onFocus={() => {
+                    if (!countryId) return;
+                    setOpenState(true);
+                    setStateSearch("");
+                  }}
+                  onChange={(e) => {
+                    if (!countryId) return;
+                    setStateSearch(e.target.value);
+                    setOpenState(true);
+                  }}
+                  disabled={!countryId}
+                  className="w-full bg-transparent outline-none border-none disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+                <span className="onboarding-arrow">▼</span>
               </div>
+
+              {openState && (
+                <ul className="onboarding-options-list max-h-60 overflow-y-auto">
+                  {states?.filter((s) =>
+                    s.name.toLowerCase().includes(stateSearch.toLowerCase())
+                  ).length > 0 ? (
+                    states
+                      .filter((s) =>
+                        s.name.toLowerCase().includes(stateSearch.toLowerCase())
+                      )
+                      .map((s) => (
+                        <li
+                          key={s.id}
+                          className={stateVal === s.name ? "active" : ""}
+                          onClick={() => {
+                            setStateVal(s.name);   // display selected state
+                            setStateId(s.id);      // store selected state id
+                            setStateSearch(s.name);
+                            setCity("");           // reset city
+                            setCityId("");
+                            setCitySearch("");
+                            setOpenState(false);
+                          }}
+                        >
+                          {s.name}
+                        </li>
+                      ))
+                  ) : (
+                    <li className="opacity-70 cursor-not-allowed px-3 py-2">
+                      No state found
+                    </li>
+                  )}
+                </ul>
+              )}
             </div>
              {/* CITY */}
-            <div>
+           <div
+              className={`onboarding-custom-select ${openCity ? "active" : ""}`}
+              ref={cityRef}
+            >
               <Label>City</Label>
-              <div className={`onboarding-custom-select ${openCity ? "active" : ""}`} ref={cityRef}>
-                <div
-                  className={`onboarding-selected-option ${openCity ? "open" : ""}`}
+
+              <div
+                className={`onboarding-selected-option ${openCity ? "open" : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!stateId) return;
+
+                  setOpenCity((prev) => !prev);
+
+                  if (!openCity) {
+                    setCitySearch("");
+                  }
+                }}
+              >
+                <input
+                  type="text"
+                  value={openCity ? citySearch : city}
+                  placeholder={stateId ? "Select city" : "Select state first"}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (stateId) setOpenCity(!openCity);
+                    if (!stateId) return;
+                    setOpenCity(true);
                   }}
-                >
-                  <span className={!city ? "opacity-70" : ""}>
-                    {city || "Select city"}
-                  </span>
-                  <span className="onboarding-arrow">▼</span>
-                </div>
-
-                {openCity && (
-                  <ul className="onboarding-options-list">
-                    {cities.map((c) => (
-                      <li
-                        key={c.id}
-                        className={city === c.name ? "active" : ""}
-                        onClick={() => {
-                          setCity(c.name);   // display
-                          setCityId(c.id);   // store id
-                          setOpenCity(false);
-                        }}
-                      >
-                        {c.name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                  onFocus={() => {
+                    if (!stateId) return;
+                    setOpenCity(true);
+                    setCitySearch("");
+                  }}
+                  onChange={(e) => {
+                    if (!stateId) return;
+                    setCitySearch(e.target.value);
+                    setOpenCity(true);
+                  }}
+                  disabled={!stateId}
+                  className="w-full bg-transparent outline-none border-none disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+                <span className="onboarding-arrow">▼</span>
               </div>
+
+              {openCity && (
+                <ul className="onboarding-options-list max-h-60 overflow-y-auto">
+                  {cities?.filter((c) =>
+                    c.name.toLowerCase().includes(citySearch.toLowerCase())
+                  ).length > 0 ? (
+                    cities
+                      .filter((c) =>
+                        c.name.toLowerCase().includes(citySearch.toLowerCase())
+                      )
+                      .map((c) => (
+                        <li
+                          key={c.id}
+                          className={city === c.name ? "active" : ""}
+                          onClick={() => {
+                            setCity(c.name);       // display selected city
+                            setCityId(c.id);       // store selected city id
+                            setCitySearch(c.name);
+                            setOpenCity(false);
+                          }}
+                        >
+                          {c.name}
+                        </li>
+                      ))
+                  ) : (
+                    <li className="opacity-70 cursor-not-allowed px-3 py-2">
+                      No city found
+                    </li>
+                  )}
+                </ul>
+              )}
             </div>
             <div>
               <Label>Pincode</Label>
@@ -975,15 +1075,15 @@ export default function PersonalInformation() {
 
         {/* ================= LANGUAGES ================= */}
        <Section title="Languages">
-  <TagSelect
-    options={languageOptions}   // ✅ full objects
-    tags={languages}
-    setTags={setLanguages}
-    onRemove={(id) => {
-      setLanguages((prev) => prev.filter((t) => t.id !== id));
-    }}
-  />
-</Section>
+        <TagSelect
+          options={languageOptions}   // ✅ full objects
+          tags={languages}
+          setTags={setLanguages}
+          onRemove={(id) => {
+            setLanguages((prev) => prev.filter((t) => t.id !== id));
+          }}
+        />
+      </Section>
 
         {/* ================= ACTIONS ================= */}
         <div className="flex justify-end gap-4 mt-10">
@@ -1335,17 +1435,29 @@ function TwoCol({ children }) {
   );
 }
 
-function Input({ label, placeholder, value, onChange, type = "text" }) {
+function Input({
+  label,
+  placeholder,
+  value,
+  onChange,
+  type = "text",
+  readOnly = false,
+  disabled = false,
+}) {
   return (
     <div>
       <Label>{label}</Label>
       <input
-        // this is for the upper
         type={type}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
-        className="w-full bg-transparent border border-black rounded-md px-3 py-2 text-sm outline-none focus:outline-none focus:!border-transparent focus:ring-0 focus:shadow-[0_0_15px_#CEFF1B]"
+        readOnly={readOnly}
+        disabled={disabled}
+        className={`w-full bg-transparent border border-black rounded-md px-3 py-2 text-sm outline-none focus:outline-none focus:!border-transparent focus:ring-0 focus:shadow-[0_0_15px_#CEFF1B]
+          ${readOnly ? "bg-gray-100 cursor-not-allowed text-gray-600" : ""}
+          ${disabled ? "opacity-60 cursor-not-allowed" : ""}
+        `}
       />
     </div>
   );
@@ -1413,48 +1525,93 @@ function TagInput({ placeholder, tags, setTags, draft, setDraft, onRemove }) {
   );
 }
 
+
+
 const TagSelect = ({ options = [], tags = [], setTags, onRemove }) => {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const wrapperRef = useRef(null);
+
+  // ✅ close on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const handleSelect = (option) => {
     const exists = tags.some((t) => t.id === option.id);
     if (!exists) {
       setTags([...tags, option]);
     }
+    setSearch("");
     setOpen(false);
   };
 
+  // ✅ only show matching + unselected options
+  const filteredOptions = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return options.filter((opt) => {
+      const alreadySelected = tags.some((t) => t.id === opt.id);
+      const label = String(opt?.value || "").toLowerCase();
+      return !alreadySelected && label.includes(q);
+    });
+  }, [options, tags, search]);
+
   return (
-    <div className="space-y-3">
-      
+    <div className="space-y-3 relative" ref={wrapperRef}>
       {/* Dropdown */}
       <div className={`onboarding-custom-select ${open ? "active" : ""}`}>
         <div
           className={`onboarding-selected-option ${open ? "open" : ""}`}
           onClick={(e) => {
             e.stopPropagation();
-            setOpen(!open);
+            setOpen((prev) => !prev);
           }}
         >
-          <span className="opacity-70">Select languages</span>
+          <input
+            type="text"
+            value={search}
+            placeholder="Select languages"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setOpen(true);
+            }}
+            className="w-full bg-transparent outline-none border-none pr-6"
+          />
           <span className="onboarding-arrow">▼</span>
         </div>
 
         {open && (
-          <ul className="onboarding-options-list">
-            {options.map((opt) => (
-              <li
-                key={opt.id}
-                onClick={() => handleSelect(opt)}
-                className={
-                  tags.some((t) => t.id === opt.id)
-                    ? "active cursor-not-allowed opacity-50"
-                    : ""
-                }
-              >
-                {opt.value}
+          <ul className="onboarding-options-list max-h-60 overflow-y-auto">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((opt) => (
+                <li
+                  key={opt.id}
+                  onClick={() => handleSelect(opt)}
+                >
+                  {opt.value}
+                </li>
+              ))
+            ) : (
+              <li className="opacity-70 cursor-not-allowed">
+                No options found
               </li>
-            ))}
+            )}
           </ul>
         )}
       </div>
@@ -1463,13 +1620,14 @@ const TagSelect = ({ options = [], tags = [], setTags, onRemove }) => {
       {tags.length > 0 && (
         <div className="flex w-full rounded-lg bg-[#FEFEFE] flex-wrap items-center gap-2 p-2 border">
           <div className="flex flex-wrap gap-2 flex-1">
-            {tags.map((tag) => (
+            {tags.map((tag, index) => (
               <span
-                key={tag.id}
+                key={tag.id ?? `${tag.value}-${index}`}
                 className="tag-chip flex items-center gap-2 px-3 py-1 rounded-md text-xs h-8"
               >
                 {tag.value}
                 <button
+                  type="button"
                   onClick={() => onRemove(tag.id)}
                   className="text-xs"
                 >
@@ -1480,6 +1638,7 @@ const TagSelect = ({ options = [], tags = [], setTags, onRemove }) => {
           </div>
 
           <button
+            type="button"
             onClick={() => setTags([])}
             className="tag-clear-btn ml-2 px-3 h-full flex items-center justify-center text-sm"
           >

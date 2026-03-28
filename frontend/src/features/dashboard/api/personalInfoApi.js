@@ -50,6 +50,7 @@ const AVATAR_PATH = `${PERSONAL_INFO_PATH}/avatar`;
 export const getMyPersonalInfo = async () => {
   try {
     const res = await api.get(PERSONAL_INFO_PATH);
+    console.log('result', unwrap(res));
     return unwrap(res);
   } catch (err) {
     throw new Error(extractErrorMessage(err));
@@ -148,4 +149,10 @@ export const deleteMyAvatar = async () => {
   } catch (err) {
     throw new Error(extractErrorMessage(err));
   }
+};
+
+//get login activities
+export const getMyActivities = async () => {
+  const res = await api.get("/api/v1/me/my-activities");
+  return unwrap(res);
 };

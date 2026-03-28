@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 use Laravel\Socialite\Facades\Socialite;
+use App\Models\UserActivity;
+use Jenssegers\Agent\Agent;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -123,6 +126,24 @@ class AuthController extends Controller
             }
 
             $token = $user->createToken('auth_token')->plainTextToken;
+            $agent = new Agent();
+            $agent->setUserAgent($request->userAgent());
+
+            // Optional: mark old current sessions false
+            UserActivity::where('user_id', $user->id)
+                ->update(['is_current' => false]);
+
+            UserActivity::create([
+                'user_id' => $user->id,
+                'session_id' => Str::uuid(), // or real session/token id if available
+                'ip_address' => $request->ip(),
+                'device' => $agent->device() ?: 'Unknown Device',
+                'platform' => $agent->platform() ?: 'Unknown OS',
+                'browser' => $agent->browser() ?: 'Unknown Browser',
+                'location' => null, // optional later
+                'last_active_at' => now(),
+                'is_current' => true,
+            ]);
             $onboarding = $this->onboardingStatus($user);
 
             return $this->successResponse('Login successful.', [
@@ -136,7 +157,6 @@ class AuthController extends Controller
             ]);
         } catch (\Throwable $e) {
             report($e);
-
             return $this->errorResponse('Login failed. Please try again later.', [], 500);
         }
     }
@@ -430,7 +450,18 @@ class AuthController extends Controller
     function logout(Request $request){
         // Revoke current token (Sanctum)
         $request->user()->currentAccessToken()->delete();
-        
+        UserActivity::create([
+            'user_id' => $request->user()->id,
+            'type' => 'logout',
+            'activity_at' => now(),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        UserActivity::where('user_id', $request->user()->id)
+            ->where('type', 'login')
+            ->where('is_current', true)
+            ->update(['is_current' => false]);
         return response()->json([
             'message' => 'Logged out successfully'
         ]);
