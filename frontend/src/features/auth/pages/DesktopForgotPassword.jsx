@@ -226,7 +226,7 @@ const DesktopForgotPassword = () => {
                 <p className="auth-submit-message" role="status">{submitMessage}</p>
               ) : null}
 
-              <div className="form-group">
+              <div className="form-group" style={{ position: "relative" }}>
                 <label htmlFor="password">Password</label>
                 <div className="input-wrapper">
                   <input
