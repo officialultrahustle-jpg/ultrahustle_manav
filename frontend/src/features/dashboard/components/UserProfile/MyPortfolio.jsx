@@ -287,7 +287,7 @@ export default function MyPortfolio() {
               <Input
                 label="Title"
                 value={mainProject.title}
-                placeholder="SalonSync - Revolutionary AI-Powered Salon App UI/UX"
+                placeholder="Title"
                 className="form-input"
                 onChange={(v) => setMainProject({ ...mainProject, title: v })}
               />
@@ -295,7 +295,7 @@ export default function MyPortfolio() {
                 label="Description"
                 limit={150}
                 className="form-textarea"
-                placeholder="This project involves designing a next-generation salon mobile application with AI-powered recommendations, seamless booking experience, and elegant user interface."
+                placeholder="Type.."
                 value={mainProject.desc}
                 onChange={(v) => setMainProject({ ...mainProject, desc: v })}
               />
@@ -303,7 +303,7 @@ export default function MyPortfolio() {
                 label="Project cost"
                 numericOnly
                 value={mainProject.cost}
-                placeholder="$600-$800"
+                placeholder="$"
                 onChange={(v) => setMainProject({ ...mainProject, cost: v })}
               />
             </div>
@@ -347,20 +347,20 @@ export default function MyPortfolio() {
                   <Input
                     label="Title"
                     className="text-md"
-                    placeholder="SalonSync - Revolutionary AI-Powered Salon App UI/UX"
+                    placeholder="Title"
                     value={project.title}
                     onChange={(v) => updateProject(project.id, "title", v)}
                   />
                   <Textarea
                     label="Description"
-                    placeholder="Type here"
+                    placeholder="Type.."
                     limit={150}
                     value={project.desc}
                     onChange={(v) => updateProject(project.id, "desc", v)}
                   />
                   <Input
                     label="Cost"
-                    placeholder="$600-$800"
+                    placeholder="$"
                     small
                     numericOnly
                     value={project.cost}
