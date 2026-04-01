@@ -549,7 +549,7 @@ export default function PersonalInformation() {
                   }}
                   onFocus={() => setFocusedId("username")}
                   onBlur={() => setFocusedId(null)}
-                  className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 m-0 w-full"
+                  className="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 p-0 m-0 w-full text-sm"
                   readOnly
                 />
               </div>
@@ -736,7 +736,7 @@ export default function PersonalInformation() {
                     setCountrySearch(e.target.value);
                     setOpenCountry(true);
                   }}
-                  className="w-full bg-transparent outline-none border-none focus:outline-none focus:ring-0 focus:border-transparent"
+                  className="w-full bg-transparent outline-none border-none focus:outline-none focus:ring-0 focus:border-transparent text-sm p-0 m-0"
                 />
                 <span className="onboarding-arrow">▼</span>
               </div>
@@ -818,7 +818,7 @@ export default function PersonalInformation() {
                     setOpenState(true);
                   }}
                   disabled={!countryId}
-                  className="w-full bg-transparent outline-none border-none focus:outline-none focus:ring-0 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-transparent outline-none border-none focus:outline-none focus:ring-0 focus:border-transparent disabled:opacity-60 disabled:cursor-not-allowed text-sm p-0 m-0"
                 />
                 <span className="onboarding-arrow">▼</span>
               </div>
@@ -1588,7 +1588,7 @@ const TagSelect = ({ options = [], tags = [], setTags, onRemove }) => {
               setSearch(e.target.value);
               setOpen(true);
             }}
-            className="w-full bg-transparent outline-none border-none focus:outline-none focus:ring-0 focus:border-transparent pr-6"
+            className="w-full bg-transparent outline-none border-none focus:outline-none focus:ring-0 focus:border-transparent text-sm p-0 m-0"
           />
           <span className="onboarding-arrow">▼</span>
         </div>
