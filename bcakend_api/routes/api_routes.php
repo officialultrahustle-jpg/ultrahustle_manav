@@ -2,6 +2,7 @@
 
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\PortfolioController;
 
 Route::post('/register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
 Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
@@ -82,6 +83,26 @@ Route::middleware('auth:sanctum')->prefix('/v1/me')->group(function (): void {
 	Route::get('/states/{country_id}', [\App\Http\Controllers\Api\PersonalInfoController::class, 'getStateByCountryId']);
 	Route::get('/cities/{country_id}', [\App\Http\Controllers\Api\PersonalInfoController::class, 'getCityByStateId']);
 
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::prefix('v1/me/portfolio')->group(function () {
+        Route::get('/', [PortfolioController::class, 'showUser']);
+        Route::post('/sync', [PortfolioController::class, 'syncUser']);
+
+        // IMPORTANT: use projectId / mediaId instead of project / media
+        Route::delete('/projects/{projectId}', [PortfolioController::class, 'destroyUserProject']);
+        Route::delete('/media/{mediaId}', [PortfolioController::class, 'destroyUserMedia']);
+    });
+
+    Route::prefix('v1/teams/{team}/portfolio')->group(function () {
+        Route::get('/', [PortfolioController::class, 'showTeam']);
+        Route::post('/sync', [PortfolioController::class, 'syncTeam']);
+
+        // IMPORTANT: use projectId / mediaId instead of project / media
+        Route::delete('/projects/{projectId}', [PortfolioController::class, 'destroyTeamProject']);
+        Route::delete('/media/{mediaId}', [PortfolioController::class, 'destroyTeamMedia']);
+    });
 });
 
 // Public decline endpoint (token-only)

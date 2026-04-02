@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class Portfolio extends Model
 {
 	protected $fillable = [
-		'user_id',
+		'owner_type',
+        'owner_id',
 	];
 
 	public function user()
@@ -19,4 +20,17 @@ class Portfolio extends Model
 	{
 		return $this->hasMany(PortfolioProject::class);
 	}
+
+	public function owner()
+    {
+        if ($this->owner_type === 'user') {
+            return $this->belongsTo(User::class, 'owner_id');
+        }
+
+        if ($this->owner_type === 'team') {
+            return $this->belongsTo(Team::class, 'owner_id');
+        }
+
+        return null;
+    }
 }

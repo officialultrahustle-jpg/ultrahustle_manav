@@ -1,4 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+
 import UserNavbar from "../../../components/layout/UserNavbar";
 import Sidebar from "../../../components/layout/Sidebar";
 import "../../../Darkuser.css";
@@ -23,6 +25,20 @@ function User({ theme, setTheme }) {
 
   const contentRef = useRef(null);
   const ticking = useRef(false);
+
+  const [successPopup, setSuccessPopup] = useState({
+    open: false,
+    title: "",
+    message: "",
+  });
+  
+  const showSuccess = (title, message) => {
+    setSuccessPopup({
+      open: true,
+      title,
+      message,
+    });
+  };
 
   useEffect(() => {
     localStorage.setItem("sidebarOpen", JSON.stringify(sidebarOpen));
@@ -83,7 +99,7 @@ function User({ theme, setTheme }) {
   };
 
   return (
-    <div className={`user-page ${theme} min-h-screen relative overflow-hidden`}>
+    <><div className={`user-page ${theme} min-h-screen relative overflow-hidden`}>
       {/* ---------- NAVBAR ---------- */}
       <UserNavbar
         toggleSidebar={() => setSidebarOpen((p) => !p)}
@@ -125,7 +141,15 @@ function User({ theme, setTheme }) {
               </section>
 
               <section ref={refs.portfolio} id="portfolio">
-                <MyPortfolio theme={theme} />
+                <MyPortfolio
+                  mode="user"
+                  onSuccess={(msg) =>
+                    showSuccess(
+                      "Portfolio Updated!",
+                      msg || "Portfolio updated successfully."
+                    )
+                  }
+                />
               </section>
 
               <section ref={refs.notifications} id="notifications">
@@ -152,6 +176,39 @@ function User({ theme, setTheme }) {
         </div>
       </div>
     </div>
+    <SuccessPopup
+      open={successPopup.open}
+      title={successPopup.title}
+      message={successPopup.message}
+      onClose={() => setSuccessPopup({ open: false, title: "", message: "" })}
+    />
+    </>
+    
+  );
+}
+
+function SuccessPopup({ open, title, message, onClose }) {
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] bg-black/30 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1f1f1f] rounded-3xl shadow-[0_0_30px_rgba(206,255,27,0.4)] border border-[#CEFF1B] px-8 py-10 w-full max-w-[420px] text-center animate-[fadeIn_.25s_ease]">
+        <div className="w-20 h-20 rounded-full bg-[#CEFF1B] mx-auto flex items-center justify-center mb-6 shadow-lg">
+          <img src="/right.svg" alt="success" className="w-10 h-10" />
+        </div>
+
+        <h3 className="text-2xl font-bold text-black dark:text-white mb-3">{title}</h3>
+        <p className="text-gray-600 dark:text-gray-300 mb-8">{message}</p>
+
+        <button
+          onClick={onClose}
+          className="bg-[#CEFF1B] text-black font-semibold px-6 py-3 rounded-xl border border-black hover:scale-[1.02] transition"
+        >
+          Continue
+        </button>
+      </div>
+    </div>,
+    document.body
   );
 }
 

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class PortfolioMedia extends Model
 {
@@ -19,6 +20,13 @@ class PortfolioMedia extends Model
 		'is_cover',
 		'sort_order',
 	];
+
+	protected $appends = ['url'];
+
+    public function getUrlAttribute()
+    {
+        return $this->path ? Storage::disk('public')->url($this->path) : null;
+    }
 
 	protected function casts(): array
 	{
