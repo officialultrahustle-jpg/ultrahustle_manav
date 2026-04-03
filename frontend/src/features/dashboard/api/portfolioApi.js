@@ -1,9 +1,6 @@
 import axios from "axios";
 import { getAuthToken } from "../../auth/api/authApi";
 
-// Base URL for axios.
-// - Set VITE_API_BASE_URL to call your backend directly (e.g. http://159.89.193.253/).
-// - Leave empty to use same-origin requests (useful with Vite proxy in dev).
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const api = axios.create({
@@ -13,14 +10,20 @@ const api = axios.create({
   },
 });
 
+/* ================= AUTH ================= */
+
 api.interceptors.request.use((config) => {
   const token = getAuthToken();
+
   if (token) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
+
   return config;
 });
+
+/* ================= HELPERS ================= */
 
 const unwrap = (res) => res?.data;
 
@@ -33,6 +36,7 @@ const extractErrorMessage = (error) => {
   if (data.errors && typeof data.errors === "object") {
     const firstKey = Object.keys(data.errors)[0];
     const firstValue = data.errors[firstKey];
+
     if (Array.isArray(firstValue) && firstValue[0]) return firstValue[0];
     if (typeof firstValue === "string") return firstValue;
   }
@@ -41,38 +45,58 @@ const extractErrorMessage = (error) => {
   return "Request failed";
 };
 
-const PORTFOLIO_PATH = "/api/v1/me/portfolio";
+const getPortfolioBasePath = ({ mode = "user", teamId = null } = {}) => {
+  if (mode === "team") {
+    if (!teamId) {
+      throw new Error("teamId is required for team portfolio");
+    }
 
-export const getMyPortfolio = async () => {
+    return `/api/v1/teams/${teamId}/portfolio`;
+  }
+
+  return `/api/v1/me/portfolio`;
+};
+
+const appendProjectToFormData = (formData, project, index) => {
+  if (project.serverId) {
+    formData.append(`projects[${index}][id]`, project.serverId);
+  }
+
+  formData.append(`projects[${index}][title]`, project.title || "");
+  formData.append(`projects[${index}][description]`, project.desc || "");
+  formData.append(`projects[${index}][cost_cents]`, project.cost || "");
+  formData.append(`projects[${index}][currency]`, "USD");
+  formData.append(`projects[${index}][sort_order]`, project.sort_order ?? index);
+
+  (project.files || []).forEach((file) => {
+    formData.append(`projects[${index}][files][]`, file);
+  });
+};
+
+/* ================= LOAD ================= */
+
+export const getMyPortfolio = async (options = {}) => {
   try {
-    const res = await api.get(PORTFOLIO_PATH);
+    const basePath = getPortfolioBasePath(options);
+    const res = await api.get(basePath);
     return unwrap(res);
   } catch (err) {
     throw new Error(extractErrorMessage(err));
   }
 };
 
-export const putMyPortfolio = async (payload) => {
-  try {
-    const res = await api.put(PORTFOLIO_PATH, payload, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    return unwrap(res);
-  } catch (err) {
-    throw new Error(extractErrorMessage(err));
-  }
-};
+/* ================= SAVE ================= */
 
-export const uploadProjectMedia = async (projectId, files) => {
+export const syncMyPortfolio = async (projects = [], options = {}) => {
   try {
+    const basePath = getPortfolioBasePath(options);
     const formData = new FormData();
-    (files || []).forEach((file) => {
-      formData.append("files[]", file);
+
+    (projects || []).forEach((project, index) => {
+      appendProjectToFormData(formData, project, index);
     });
 
-    const res = await api.post(`${PORTFOLIO_PATH}/projects/${projectId}/media`, formData, {
+    const res = await api.post(`${basePath}/sync`, formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -84,18 +108,32 @@ export const uploadProjectMedia = async (projectId, files) => {
   }
 };
 
-export const deletePortfolioProject = async (projectId) => {
+/* ================= DELETE PROJECT ================= */
+
+export const deletePortfolioProject = async (projectId, options = {}) => {
   try {
-    const res = await api.delete(`${PORTFOLIO_PATH}/projects/${projectId}`);
+    if (!projectId) {
+      throw new Error("projectId is required");
+    }
+
+    const basePath = getPortfolioBasePath(options);
+    const res = await api.delete(`${basePath}/projects/${projectId}`);
     return unwrap(res);
   } catch (err) {
     throw new Error(extractErrorMessage(err));
   }
 };
 
-export const deletePortfolioMedia = async (mediaId) => {
+/* ================= DELETE MEDIA ================= */
+
+export const deletePortfolioMedia = async (mediaId, options = {}) => {
   try {
-    const res = await api.delete(`${PORTFOLIO_PATH}/media/${mediaId}`);
+    if (!mediaId) {
+      throw new Error("mediaId is required");
+    }
+
+    const basePath = getPortfolioBasePath(options);
+    const res = await api.delete(`${basePath}/media/${mediaId}`);
     return unwrap(res);
   } catch (err) {
     throw new Error(extractErrorMessage(err));

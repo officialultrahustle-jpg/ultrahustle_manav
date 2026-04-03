@@ -1,146 +1,186 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 
 import {
   deletePortfolioProject,
   getMyPortfolio,
-  putMyPortfolio,
-  uploadProjectMedia,
+  syncMyPortfolio,
 } from "../../api/portfolioApi";
 
-let nextId = 4; // counter for unique IDs
+const DEFAULT_CHILD_COUNT = 3;
+const GRID_UPLOAD_SLOTS = 9;
 
-export default function MyPortfolio() {
+let nextLocalId = 1000;
+const makeLocalId = () => nextLocalId++;
+
+const emptyProject = (localId = null) => ({
+  id: localId ?? makeLocalId(),
+  serverId: null,
+  title: "",
+  desc: "",
+  cost: "",
+  coverUrl: "",
+  files: [],
+  existingMedia: [],
+});
+
+const normalizeMedia = (media = []) =>
+  Array.isArray(media)
+    ? media
+        .map((m, index) => ({
+          id: m?.id ?? `existing-${index}`,
+          url: m?.url || (m?.path ? toPublicUrl(m.path) : ""),
+          type: m?.type || "image",
+          path: m?.path || "",
+        }))
+        .filter((m) => m.url)
+    : [];
+
+const toPublicUrl = (path = "") => {
+  if (!path) return "";
+  if (path.startsWith("http")) return path;
+  if (path.startsWith("/storage/")) return path;
+  if (path.startsWith("storage/")) return `/${path}`;
+  return `/storage/${path}`;
+};
+
+const firstValidMediaUrl = (project) => {
+  if (project?.cover_media?.url) return project.cover_media.url;
+  if (project?.cover_media?.path) return toPublicUrl(project.cover_media.path);
+
+  const media = Array.isArray(project?.media) ? project.media : [];
+  const first = media.find((m) => m?.url || m?.path);
+
+  if (first?.url) return first.url;
+  if (first?.path) return toPublicUrl(first.path);
+
+  return "";
+};
+
+const projectFromServer = (p, forcedLocalId = null) => {
+  const existingMedia = normalizeMedia(p?.media || []);
+  return {
+    id: forcedLocalId ?? makeLocalId(),
+    serverId: p?.id ?? null,
+    title: p?.title ?? "",
+    desc: p?.description ?? "",
+    cost:
+      p?.cost_cents === null || p?.cost_cents === undefined
+        ? ""
+        : String(p.cost_cents),
+    coverUrl: firstValidMediaUrl(p),
+    files: [],
+    existingMedia,
+  };
+};
+
+const createPreviewFile = (file) => ({
+  id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
+  file,
+  preview: URL.createObjectURL(file),
+  type: file?.type?.startsWith("video/") ? "video" : "image",
+});
+
+export default function MyPortfolio({
+  onSuccess,
+  mode = "user",
+  teamId = null,
+}) {
+  const [mainProject, setMainProject] = useState(emptyProject("main"));
   const [projects, setProjects] = useState([
-    { id: 1, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
-    { id: 2, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
-    { id: 3, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
+    emptyProject(1),
+    emptyProject(2),
+    emptyProject(3),
   ]);
 
-  const [mainProject, setMainProject] = useState({
-    serverId: null,
-    title: "",
-    desc: "",
-    cost: "",
-    coverUrl: "",
-  });
-
-  const [uploadStep, setUploadStep] = useState(null); // null | "grid" | "success"
-  const [uploadTarget, setUploadTarget] = useState(null); // { type: 'main'|'project', localId?: number, serverId?: number|null }
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const addProject = () => {
-    setProjects((prev) => [
-      ...prev,
-      { id: nextId++, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
-    ]);
-  };
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    projectId: null,
+    title: "",
+    message: "",
+  });
 
-  const removeProject = async (id) => {
-    setError("");
-    const project = projects.find((p) => p.id === id);
-    if (!project) return;
+  const [toast, setToast] = useState({
+    open: false,
+    title: "",
+    message: "",
+    type: "success",
+  });
 
-    // If it already exists on the backend, delete it there first.
-    if (project.serverId) {
-      try {
-        await deletePortfolioProject(project.serverId);
-      } catch (e) {
-        setError(e?.message || "Request failed");
-        return;
-      }
-    }
+  const [draggedId, setDraggedId] = useState(null);
 
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-  };
+  const portfolioOptions = useMemo(
+    () => ({
+      mode,
+      teamId,
+    }),
+    [mode, teamId]
+  );
 
-  const updateProject = (id, field, value) => {
-    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  const canUseTeamPortfolio = mode !== "team" || !!teamId;
+
+  const showToast = (title, message = "", type = "success") => {
+    setToast({ open: true, title, message, type });
+
+    setTimeout(() => {
+      setToast((prev) => ({ ...prev, open: false }));
+    }, 3000);
   };
 
   const normalizeServerProjects = (data) => {
-    const raw = data?.projects || data?.data?.projects || data?.portfolio?.projects || [];
-    if (!Array.isArray(raw)) return [];
-    return raw;
-  };
-
-  const projectToLocal = (p) => {
-    const directCoverUrl =
-      p?.cover_media?.url ||
-      p?.cover_media?.path ||
-      p?.cover_url ||
-      p?.coverUrl ||
-      "";
-
-    const media = Array.isArray(p?.media) ? p.media : [];
-    const coverMediaId = p?.cover_media_id ?? null;
-    const coverFromMediaId =
-      coverMediaId && media.length
-        ? media.find((m) => m?.id === coverMediaId)?.url || media.find((m) => m?.id === coverMediaId)?.path
-        : "";
-    const firstMediaUrl = media?.[0]?.url || media?.[0]?.path || "";
-
-    const coverUrl = String(directCoverUrl || coverFromMediaId || firstMediaUrl || "");
-
-    const cost =
-      (typeof p?.cost_cents === "number" ? String(p.cost_cents) : p?.cost_cents) ??
-      p?.cost ??
-      p?.project_cost ??
-      "";
-
-    return {
-      id: nextId++,
-      serverId: p?.id ?? null,
-      title: p?.title ?? "",
-      desc: p?.description ?? p?.desc ?? "",
-      cost: cost === null || cost === undefined ? "" : String(cost),
-      coverUrl,
-      sortOrder: p?.sort_order ?? 0,
-    };
+    const raw =
+      data?.projects || data?.data?.projects || data?.portfolio?.projects || [];
+    return Array.isArray(raw) ? raw : [];
   };
 
   const refreshPortfolio = async () => {
+    if (!canUseTeamPortfolio) {
+      setMainProject(emptyProject("main"));
+      setProjects([emptyProject(1), emptyProject(2), emptyProject(3)]);
+      return;
+    }
+
     setError("");
     setIsLoading(true);
+
     try {
-      const data = await getMyPortfolio();
-      const serverProjects = normalizeServerProjects(data);
-      const mapped = serverProjects
+      const data = await getMyPortfolio(portfolioOptions);
+
+      const mapped = normalizeServerProjects(data)
         .slice()
-        .sort((a, b) => (a?.sort_order ?? 0) - (b?.sort_order ?? 0))
-        .map(projectToLocal);
+        .sort((a, b) => (a?.sort_order ?? 0) - (b?.sort_order ?? 0));
 
       if (mapped.length > 0) {
         const [first, ...rest] = mapped;
+
         setMainProject({
-          serverId: first.serverId,
-          title: first.title,
-          desc: first.desc,
-          cost: first.cost,
-          coverUrl: first.coverUrl,
+          ...emptyProject("main"),
+          ...projectFromServer(first, "main"),
+          id: "main",
         });
-        setProjects(
-          rest.length
-            ? rest.map((p) => ({ ...p }))
-            : [
-                { id: 1, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
-                { id: 2, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
-                { id: 3, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
-              ],
+
+        const childProjects = rest.map((p, index) =>
+          projectFromServer(p, index + 1)
         );
+
+        while (childProjects.length < DEFAULT_CHILD_COUNT) {
+          childProjects.push(emptyProject(childProjects.length + 1));
+        }
+
+        setProjects(childProjects);
       } else {
-        setMainProject({ serverId: null, title: "", desc: "", cost: "", coverUrl: "" });
-        setProjects([
-          { id: 1, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
-          { id: 2, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
-          { id: 3, serverId: null, title: "", desc: "", cost: "", coverUrl: "" },
-        ]);
+        setMainProject(emptyProject("main"));
+        setProjects([emptyProject(1), emptyProject(2), emptyProject(3)]);
       }
     } catch (e) {
-      setError(e?.message || "Request failed");
+      setError(e?.message || "Failed to load portfolio");
     } finally {
       setIsLoading(false);
     }
@@ -149,32 +189,164 @@ export default function MyPortfolio() {
   useEffect(() => {
     refreshPortfolio();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mode, teamId]);
 
-  const buildSavePayload = () => {
-    const combined = [{ ...mainProject, _sort: 0 }, ...projects.map((p, idx) => ({ ...p, _sort: idx + 1 }))];
-
-    return {
-      projects: combined.map((p) => ({
-        ...(p.serverId ? { id: p.serverId } : {}),
-        title: p.title,
-        description: p.desc,
-        // Backend expects `cost_cents` (see GET /api/v1/me/portfolio response)
-        cost_cents: p.cost === "" ? null : Number.parseInt(String(p.cost), 10),
-        currency: "USD",
-        sort_order: p._sort,
-      })),
+  useEffect(() => {
+    return () => {
+      [...mainProject.files, ...projects.flatMap((p) => p.files || [])].forEach((f) => {
+        if (f?.preview) URL.revokeObjectURL(f.preview);
+      });
     };
+  }, [mainProject.files, projects]);
+
+  const updateMain = (field, value) => {
+    setMainProject((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const updateProject = (id, field, value) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+    );
+  };
+
+  const clearLocalFiles = (files = []) => {
+    files.forEach((f) => {
+      if (f?.preview) URL.revokeObjectURL(f.preview);
+    });
+  };
+
+  const askRemoveProject = (id) => {
+    setConfirmModal({
+      open: true,
+      projectId: id,
+      title: "Remove Portfolio?",
+      message:
+        "Are you sure you want to remove this portfolio? This action cannot be undone.",
+    });
+  };
+
+  const removeProject = async (id) => {
+    const project = projects.find((p) => p.id === id);
+    if (!project) return;
+
+    if (project.serverId) {
+      try {
+        await deletePortfolioProject(project.serverId, portfolioOptions);
+      } catch (e) {
+        setError(e?.message || "Failed to delete project");
+        return;
+      }
+    }
+
+    clearLocalFiles(project.files || []);
+
+    setProjects((prev) => {
+      const filtered = prev.filter((p) => p.id !== id);
+
+      while (filtered.length < DEFAULT_CHILD_COUNT) {
+        filtered.push(emptyProject(makeLocalId()));
+      }
+
+      return filtered;
+    });
+
+    showToast("Deleted", "Portfolio removed successfully.");
+  };
+
+  const addMorePortfolio = () => {
+    setProjects((prev) => [...prev, emptyProject(makeLocalId())]);
+  };
+
+  const openUploadForMain = () => {
+    setError("");
+    setUploadTarget({ type: "main" });
+    setUploadOpen(true);
+  };
+
+  const openUploadForProject = (project) => {
+    setError("");
+    setUploadTarget({ type: "project", localId: project.id });
+    setUploadOpen(true);
+  };
+
+  const handleUploadSelected = (rawFiles) => {
+    if (!uploadTarget) return;
+
+    const preparedFiles = (rawFiles || []).map(createPreviewFile);
+    const preview = preparedFiles?.[0]?.preview || "";
+
+    if (uploadTarget.type === "main") {
+      clearLocalFiles(mainProject.files || []);
+      setMainProject((prev) => ({
+        ...prev,
+        files: preparedFiles,
+        coverUrl: preview || prev.coverUrl,
+      }));
+    } else {
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id !== uploadTarget.localId) return p;
+          clearLocalFiles(p.files || []);
+          return {
+            ...p,
+            files: preparedFiles,
+            coverUrl: preview || p.coverUrl,
+          };
+        })
+      );
+    }
+
+    setUploadOpen(false);
+    setUploadTarget(null);
+  };
+
+  const buildProjectsForSave = () => {
+    const combined = [
+      { ...mainProject, _sort: 0 },
+      ...projects.map((p, idx) => ({ ...p, _sort: idx + 1 })),
+    ];
+
+    return combined.map((p) => ({
+      serverId: p.serverId,
+      title: p.title,
+      desc: p.desc,
+      cost: p.cost,
+      sort_order: p._sort,
+      files: (p.files || []).map((f) => f.file),
+    }));
   };
 
   const handleSaveChanges = async () => {
+    if (!canUseTeamPortfolio) {
+      setError("Create the team first to save team portfolio.");
+      return;
+    }
+
     setError("");
+
     try {
       setIsSaving(true);
-      await putMyPortfolio(buildSavePayload());
+
+      const response = await syncMyPortfolio(buildProjectsForSave(), portfolioOptions);
+
       await refreshPortfolio();
+
+      showToast(
+        "Success",
+        mode === "team"
+          ? "Team portfolio updated successfully."
+          : "Portfolio updated successfully."
+      );
+
+      onSuccess?.(
+        response?.message ||
+          (mode === "team"
+            ? "Team portfolio updated successfully"
+            : "Portfolio updated successfully")
+      );
     } catch (e) {
-      setError(e?.message || "Request failed");
+      console.error("Portfolio save error:", e);
+      setError(e?.message || "Failed to save portfolio");
     } finally {
       setIsSaving(false);
     }
@@ -182,263 +354,364 @@ export default function MyPortfolio() {
 
   const handleDiscard = async () => {
     setError("");
-    setUploadStep(null);
+    setUploadOpen(false);
+    setUploadTarget(null);
+
+    clearLocalFiles(mainProject.files || []);
+    projects.forEach((p) => clearLocalFiles(p.files || []));
+
     await refreshPortfolio();
+
+    showToast("Discarded", "Unsaved changes were reset.");
   };
 
-  const openUploadForMain = () => {
-    setError("");
-    setUploadTarget({ type: "main", serverId: mainProject?.serverId || null });
-    setUploadStep("grid");
+  // ===== DRAG DROP =====
+  const handleDragStart = (id) => {
+    setDraggedId(id);
   };
 
-  const openUploadForProject = (project) => {
-    setError("");
-    setUploadTarget({ type: "project", localId: project.id, serverId: project?.serverId || null });
-    setUploadStep("grid");
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
-  const handleUploadSelected = async (files) => {
-    setError("");
-    const serverId = uploadTarget?.serverId;
+  const handleDrop = (targetId) => {
+    if (!draggedId || draggedId === targetId) return;
 
-    if (!serverId) {
-      setError("Please save changes before uploading media.");
-      return;
-    }
+    setProjects((prev) => {
+      const draggedIndex = prev.findIndex((p) => p.id === draggedId);
+      const targetIndex = prev.findIndex((p) => p.id === targetId);
 
-    try {
-      setIsSaving(true);
-      await uploadProjectMedia(serverId, files);
-      setUploadStep("success");
-      await refreshPortfolio();
-    } catch (e) {
-      setError(e?.message || "Request failed");
-    } finally {
-      setIsSaving(false);
-    }
+      if (draggedIndex === -1 || targetIndex === -1) return prev;
+
+      const updated = [...prev];
+      const [draggedItem] = updated.splice(draggedIndex, 1);
+      updated.splice(targetIndex, 0, draggedItem);
+
+      return updated;
+    });
+
+    setDraggedId(null);
   };
 
-  // ✅ Modal open when grid OR success
-  const isModalOpen = uploadStep === "grid" || uploadStep === "success";
-
-  // ✅ ESC close + body scroll lock when modal open
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") setUploadStep(null);
-    };
-    window.addEventListener("keydown", onKey);
-
-    if (isModalOpen) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = "";
-
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [isModalOpen]);
+  const sectionTitle = mode === "team" ? "Team Portfolio" : "My Portfolio";
 
   return (
     <>
-      {/* ================= PAGE (BLUR BEHIND UPLOAD GRID) ================= */}
       <div
-        className={`ml-auto mt-12 pb-20 transition-all duration-300 my-portfolio user-profile-portfolio
-        ${isModalOpen ? "blur-sm pointer-events-none select-none" : ""}`}
+        className={`ml-auto mt-12 pb-20 transition-all duration-300 my-portfolio user-profile-portfolio ${
+          uploadOpen ? "blur-sm pointer-events-none select-none" : ""
+        }`}
       >
-      
-        {/* HEADER */}
         <div className="flex items-center gap-4 mb-6">
-          <h3 className="text-xl font-semibold whitespace-nowrap">My Portfolio</h3>
+          <h3 className="text-xl font-semibold whitespace-nowrap">
+            {sectionTitle}
+          </h3>
           <div className="flex-1 h-px bg-[#2B2B2B]" />
         </div>
 
-        {/* MAIN */}
-        <div className="portfolio-card-edit portfolio-surface border-1 border-[#CEFF1B] rounded-2xl p-6 mb-10">
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="relative h-[417px] bg-gray-200 rounded-xl overflow-hidden">
-              {mainProject.coverUrl ? (
-                <img
-                  src={mainProject.coverUrl}
-                  alt=""
-                  className="absolute inset-0 m-auto bg-[#CEFF1B] px-4 py-2 rounded"
+        {mode === "team" && !teamId ? (
+          <div className="border border-dashed border-[#CEFF1B] rounded-2xl p-8 bg-white/70">
+            <p className="text-sm text-gray-700">
+              Create the team first, then you can add its portfolio here.
+            </p>
+          </div>
+        ) : (
+          <>
+            <PortfolioCard
+              isMain
+              titleLabel="Main Portfolio"
+              titleInputLabel="Main Portfolio Title"
+              project={mainProject}
+              onTitleChange={(v) => updateMain("title", v)}
+              onDescChange={(v) => updateMain("desc", v)}
+              onCostChange={(v) => updateMain("cost", v)}
+              onUpload={openUploadForMain}
+              onClearMedia={() => {
+                clearLocalFiles(mainProject.files || []);
+                setMainProject((prev) => ({
+                  ...prev,
+                  files: [],
+                  existingMedia: [],
+                  coverUrl: "",
+                }));
+              }}
+            />
+
+            {projects.map((project, index) => (
+              <div
+                key={project.id}
+                draggable
+                onDragStart={() => handleDragStart(project.id)}
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop(project.id)}
+                className={`transition ${
+                  draggedId === project.id ? "opacity-50 scale-[0.99]" : ""
+                }`}
+              >
+                <PortfolioCard
+                  titleLabel={`Portfolio ${index + 1}`}
+                  titleInputLabel={`Title ${index + 1}`}
+                  project={project}
+                  onTitleChange={(v) => updateProject(project.id, "title", v)}
+                  onDescChange={(v) => updateProject(project.id, "desc", v)}
+                  onCostChange={(v) => updateProject(project.id, "cost", v)}
+                  onUpload={() => openUploadForProject(project)}
+                  onDelete={() => askRemoveProject(project.id)}
+                  onClearMedia={() => {
+                    clearLocalFiles(project.files || []);
+                    setProjects((prev) =>
+                      prev.map((p) =>
+                        p.id === project.id
+                          ? { ...p, files: [], existingMedia: [], coverUrl: "" }
+                          : p
+                      )
+                    );
+                  }}
+                  showDragHandle
                 />
-              ) : null}
+              </div>
+            ))}
+
+            <div className="flex justify-start mb-10">
               <button
                 type="button"
-                onClick={openUploadForMain}
-                className="absolute inset-0 m-auto bg-[#CEFF1B] px-4 py-2 rounded"
-                disabled={isSaving || isLoading}
+                onClick={addMorePortfolio}
+                className="bg-white border border-black px-5 py-3 rounded-xl font-medium hover:bg-[#CEFF1B] transition"
               >
-                Upload Photo
+                + Add More Portfolio
               </button>
+            </div>
 
-              {/* <button
+            <div className="flex justify-end gap-4 mt-4">
+              <button
                 type="button"
-                onClick={() => setUploadStep(null)}
-                className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center
-                  bg-red-500 text-white rounded-full text-sm shadow-md hover:bg-red-600"
-                title="Close"
+                onClick={handleDiscard}
+                disabled={isSaving || isLoading}
+                className="px-5 py-2.5 border border-black rounded-xl bg-white hover:bg-gray-50 transition"
               >
-                ✕
-              </button> */}
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveChanges}
+                disabled={isSaving || isLoading}
+                className="bg-[#CEFF1B] border border-black px-6 py-2.5 rounded-xl font-medium hover:scale-[1.01] transition"
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </button>
             </div>
+          </>
+        )}
 
-            <div className="space-y-4 form-label">
-              <Input
-                label="Title"
-                value={mainProject.title}
-                placeholder="SalonSync - Revolutionary AI-Powered Salon App UI/UX"
-                className="form-input"
-                onChange={(v) => setMainProject({ ...mainProject, title: v })}
-              />
-              <Textarea
-                label="Description"
-                limit={150}
-                className="form-textarea"
-                placeholder="This project involves designing a next-generation salon mobile application with AI-powered recommendations, seamless booking experience, and elegant user interface."
-                value={mainProject.desc}
-                onChange={(v) => setMainProject({ ...mainProject, desc: v })}
-              />
-              <Input
-                label="Project cost"
-                numericOnly
-                value={mainProject.cost}
-                placeholder="$600-$800"
-                onChange={(v) => setMainProject({ ...mainProject, cost: v })}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* PROJECTS GRID */}
-        <div className="portfolio-card-edit portfolio-surface border-1 border-[#CEFF1B] rounded-xl p-6 mb-6 flex flex-col">
-          <div className="px-4 pb-4 -mx-4">
-            <div className="grid md:grid-cols-3 gap-6">
-              {projects.map((project) => (
-                <div key={project.id} className="space-y-3">
-                  <div className="relative h-[220px] bg-gray-200 rounded-xl">
-                    {project.coverUrl ? (
-                      <img
-                        src={project.coverUrl}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-cover rounded-xl"
-                      />
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => openUploadForProject(project)}
-                      className="absolute inset-0 m-auto bg-[#CEFF1B] px-3 py-1 rounded text-xs"
-                      disabled={isSaving || isLoading}
-                    >
-                      Change Photo
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => removeProject(project.id)}
-                      className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center bg-red-500 text-white rounded-full text-sm"
-                      title="Remove"
-                      disabled={isSaving || isLoading}
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <Input
-                    label="Title"
-                    className="text-md"
-                    placeholder="SalonSync - Revolutionary AI-Powered Salon App UI/UX"
-                    value={project.title}
-                    onChange={(v) => updateProject(project.id, "title", v)}
-                  />
-                  <Textarea
-                    label="Description"
-                    placeholder="Type here"
-                    limit={150}
-                    value={project.desc}
-                    onChange={(v) => updateProject(project.id, "desc", v)}
-                  />
-                  <Input
-                    label="Cost"
-                    placeholder="$600-$800"
-                    small
-                    numericOnly
-                    value={project.cost}
-                    onChange={(v) => updateProject(project.id, "cost", v)}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-end mt-6 pt-4 border-t border-white/20">
-            <button
-              type="button"
-              onClick={addProject}
-              className="bg-[#CEFF1B] border-[0.6px] border-black px-4 py-2 rounded"
-              disabled={isSaving || isLoading}
-            >
-              Add more
-            </button>
-          </div>
-        </div>
-
-        {/* ACTIONS */}
-        <div className="flex justify-end gap-4">
-          <button
-            type="button"
-            onClick={handleDiscard}
-            disabled={isSaving || isLoading}
-            className="px-4 py-2 border-[0.6px] border-black rounded"
-          >
-            Discard
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveChanges}
-            disabled={isSaving || isLoading}
-            className="bg-[#CEFF1B] border-[0.6px] border-black px-4 py-2 rounded"
-          >
-            {isSaving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-
-        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
       </div>
 
-      {/* ================= MODALS PORTALED TO BODY ================= */}
-      {isModalOpen &&
+      {uploadOpen &&
         createPortal(
           <>
-            {/* BACKDROP (BLUR DARK) - behind UploadGrid but above page */}
             <div
               className="fixed inset-0 z-[900] bg-black/30 backdrop-blur-sm"
-              onClick={() => setUploadStep(null)}
+              onClick={() => {
+                setUploadOpen(false);
+                setUploadTarget(null);
+              }}
             />
-
-            {/* UPLOAD GRID (visible in both grid and success) */}
             <UploadGrid
-              blurred={uploadStep === "success"}
-              onBack={() => setUploadStep(null)}
+              onBack={() => {
+                setUploadOpen(false);
+                setUploadTarget(null);
+              }}
               onSelect={handleUploadSelected}
             />
-
-            {/* SUCCESS MODAL (TOP) */}
-            {uploadStep === "success" && <UploadSuccess onBack={() => setUploadStep(null)} />}
           </>,
+          document.body
+        )}
+
+      {confirmModal.open &&
+        createPortal(
+          <ConfirmModal
+            title={confirmModal.title}
+            message={confirmModal.message}
+            onCancel={() =>
+              setConfirmModal({
+                open: false,
+                projectId: null,
+                title: "",
+                message: "",
+              })
+            }
+            onConfirm={async () => {
+              const id = confirmModal.projectId;
+              setConfirmModal({
+                open: false,
+                projectId: null,
+                title: "",
+                message: "",
+              });
+              await removeProject(id);
+            }}
+          />,
+          document.body
+        )}
+
+      {toast.open &&
+        createPortal(
+          <SuccessToast
+            title={toast.title}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+          />,
           document.body
         )}
     </>
   );
 }
 
-/* ================= UPLOAD GRID ================= */
+function PortfolioCard({
+  isMain = false,
+  titleLabel,
+  titleInputLabel,
+  project,
+  onTitleChange,
+  onDescChange,
+  onCostChange,
+  onUpload,
+  onDelete,
+  onClearMedia,
+  showDragHandle = false,
+}) {
+  const allMedia = [
+    ...(project.existingMedia || []).map((m) => ({
+      id: m.id,
+      url: m.url,
+      type: m.type || "image",
+    })),
+    ...(project.files || []).map((f) => ({
+      id: f.id,
+      url: f.preview,
+      type: f.type || "image",
+    })),
+  ].filter((m) => m.url);
 
-function UploadGrid({ onSelect, onBack, blurred }) {
+  const visibleMedia = allMedia.slice(0, 4);
+
+  return (
+    <div className="portfolio-card-edit portfolio-surface border border-[#CEFF1B] rounded-[24px] p-6 mb-10 bg-white shadow-[0_10px_35px_rgba(0,0,0,0.05)]">
+      <div className="grid md:grid-cols-2 gap-8 items-start">
+        <div>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <div className="flex items-center gap-3">
+              {showDragHandle && (
+                <span className="text-xl cursor-grab select-none">⋮⋮</span>
+              )}
+              <h4 className="text-lg font-semibold text-black">{titleLabel}</h4>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {allMedia.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onClearMedia}
+                  className="px-3 py-2 rounded-xl border border-gray-300 text-sm hover:bg-gray-50 transition"
+                >
+                  Clear Media
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={onUpload}
+                className="bg-[#CEFF1B] px-4 py-2 rounded-xl border border-black text-sm font-medium hover:scale-[1.01] transition"
+              >
+                {allMedia.length ? "Change Media" : "Upload Media"}
+              </button>
+            </div>
+          </div>
+
+          {allMedia.length ? (
+            <div className="grid gap-3 grid-cols-2">
+              {visibleMedia.map((item, idx) => (
+                <MediaTile key={item.id || idx} media={item} />
+              ))}
+            </div>
+          ) : (
+            <div className="h-[320px] rounded-2xl border border-dashed border-gray-300 bg-[#FAFAFA] flex items-center justify-center text-gray-500 text-sm">
+              No media selected
+            </div>
+          )}
+
+          {allMedia.length > 4 && (
+            <p className="mt-3 text-xs text-gray-500">
+              +{allMedia.length - 4} more media selected
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-4 form-label">
+          <Input
+            label={titleInputLabel}
+            value={project.title}
+            placeholder="Enter title"
+            onChange={onTitleChange}
+          />
+
+          <Textarea
+            label="Description"
+            limit={150}
+            placeholder="Write a short description..."
+            value={project.desc}
+            onChange={onDescChange}
+          />
+
+          <Input
+            label="Project Cost"
+            numericOnly
+            value={project.cost}
+            placeholder="500"
+            onChange={onCostChange}
+          />
+
+          {!isMain && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={onDelete}
+                className="px-4 py-2 border border-red-500 text-red-600 rounded-xl hover:bg-red-50 transition"
+              >
+                Remove Portfolio
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MediaTile({ media }) {
+  const isVideo = media?.type === "video";
+
+  return (
+    <div className="h-[155px] md:h-[170px] rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 shadow-sm">
+      {isVideo ? (
+        <video
+          src={media.url}
+          className="w-full h-full object-cover"
+          muted
+          playsInline
+          controls
+        />
+      ) : (
+        <img src={media.url} alt="" className="w-full h-full object-cover" />
+      )}
+    </div>
+  );
+}
+
+function UploadGrid({ onSelect, onBack }) {
   const fileRef = useRef(null);
-
   const [files, setFiles] = useState([]);
-  const [visibleSlots] = useState(9);
   const [activeIndex, setActiveIndex] = useState(null);
 
   const openPicker = () => fileRef.current?.click();
@@ -447,9 +720,11 @@ function UploadGrid({ onSelect, onBack, blurred }) {
     const selected = Array.from(e.target.files || []);
     if (activeIndex === null || selected.length === 0) return;
 
+    const selectedFile = selected[0];
+
     setFiles((prev) => {
       const updated = [...prev];
-      updated[activeIndex] = selected[0];
+      updated[activeIndex] = selectedFile;
       return updated;
     });
 
@@ -457,129 +732,205 @@ function UploadGrid({ onSelect, onBack, blurred }) {
     e.target.value = "";
   };
 
+  const removeSlotFile = (idx) => {
+    setFiles((prev) => {
+      const updated = [...prev];
+      updated[idx] = undefined;
+      return updated;
+    });
+  };
+
+  const preparedPreviews = Array.from({ length: GRID_UPLOAD_SLOTS }).map((_, idx) => {
+    const file = files[idx];
+    return file ? URL.createObjectURL(file) : null;
+  });
+
+  useEffect(() => {
+    return () => {
+      preparedPreviews.forEach((p) => p && URL.revokeObjectURL(p));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
+
+  const selectedCount = files.filter(Boolean).length;
+
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-auto">
-      <div
-        className={`upload-card rounded-2xl p-4 w-[95%] max-w-[820px] h-auto max-h-[90vh] flex flex-col bg-white shadow-[0_0_20px_#CEFF1B] transition-all duration-200
-        ${blurred ? "blur-sm scale-[0.98] pointer-events-none select-none opacity-95" : ""}`}
-      >
-        {/* HEADER */}
-        <div className="upload-header flex items-center gap-3 mb-3 shrink-0">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center pointer-events-auto px-3">
+      <div className="upload-card rounded-[28px] p-5 w-full max-w-[880px] max-h-[92vh] overflow-auto bg-white shadow-[0_0_28px_rgba(206,255,27,0.55)] border border-[#CEFF1B]">
+        <div className="flex items-center gap-3 mb-5">
           <button
             type="button"
             onClick={onBack}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100"
-            title="Back"
+            className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
           >
-            <img src="/backarrow.svg" alt="back" />
+            ←
           </button>
 
-          <h4 className="text-sm font-medium">Select and upload your file</h4>
+          <h4 className="text-base md:text-lg font-semibold text-black">
+            Select and upload your media
+          </h4>
 
           <button
             type="button"
             onClick={onBack}
-            className="ml-auto w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#CEFF1B]"
-            title="Close"
+            className="ml-auto w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#CEFF1B] transition"
           >
             ✕
           </button>
         </div>
 
-        {/* GRID */}
-        <div className="grid grid-cols-3 gap-4 flex-1 overflow-y-auto pr-2 custom-scroll">
-          {Array.from({ length: visibleSlots }).map((_, i) => {
-            const file = files[i];
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {Array.from({ length: GRID_UPLOAD_SLOTS }).map((_, idx) => {
+            const file = files[idx];
+            const preview = preparedPreviews[idx];
+            const isVideo = file?.type?.startsWith("video/");
 
             return (
               <div
-                key={i}
-                onClick={() => {
-                  setActiveIndex(i);
-                  openPicker();
-                }}
-                className="upload-slot relative h-[110px] rounded-xl flex items-center justify-center cursor-pointer overflow-hidden bg-gray-100"
+                key={idx}
+                className="relative aspect-square rounded-2xl border border-dashed border-gray-300 bg-[#FAFAFA] overflow-hidden"
               >
-                {/* ✅ COVER IMAGE BADGE */}
-                {i === 0 && (
-                  <span className="absolute inset-0 z-10 flex items-center justify-center px-2">
-                    <span className="bg-[#CEFF1B] text-black font-medium text-[10px] sm:text-xs px-2 py-[3px] rounded max-w-[90%] text-center whitespace-normal leading-tight">
-                      Upload Cover Image
-                    </span>
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveIndex(idx);
+                    openPicker();
+                  }}
+                  className="w-full h-full flex items-center justify-center hover:border-[#CEFF1B]"
+                >
+                  {preview ? (
+                    isVideo ? (
+                      <video
+                        src={preview}
+                        className="w-full h-full object-cover"
+                        muted
+                        playsInline
+                      />
+                    ) : (
+                      <img
+                        src={preview}
+                        alt={`slot-${idx}`}
+                        className="w-full h-full object-cover"
+                      />
+                    )
+                  ) : (
+                    <span className="text-4xl text-gray-400">+</span>
+                  )}
+                </button>
 
-                {/* ✅ FILE PREVIEW */}
-                {file ? (
-                  <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <>
-                    {/* ✅ show icons only for NON-cover slots */}
-                    {i !== 0 && (
-                      <div className="relative">
-                        <img src="/video2.svg" className="w-10 mr-8 mt-2 opacity-60" alt="" />
-                        <img src="/video1.svg" className="w-12 absolute -right-2 -top-3 opacity-60" alt="" />
-                        <div className="absolute bottom-4 right-5 w-6 h-6 rounded-full bg-[#CEFF1B] flex items-center justify-center">
-                          +
-                        </div>
-                      </div>
-                    )}
-                  </>
+                {preview && (
+                  <button
+                    type="button"
+                    onClick={() => removeSlotFile(idx)}
+                    className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 border border-gray-200 text-black shadow flex items-center justify-center hover:bg-red-50"
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
             );
           })}
         </div>
 
-        <div className="flex justify-end items-center mt-3 shrink-0">
-          <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6">
+          <p className="text-sm text-gray-600">
+            {selectedCount
+              ? `${selectedCount} media file(s) selected`
+              : "Add up to 9 images/videos"}
+          </p>
+
+          <div className="flex gap-3 justify-end">
             <button
               type="button"
               onClick={onBack}
-              className="upload-btn-cancel px-4 py-2 rounded-lg text-sm border border-black"
+              className="px-5 py-2.5 border border-black rounded-xl bg-white hover:bg-gray-50 transition"
             >
               Cancel
             </button>
-
-            {files.filter(Boolean).length > 0 && (
-              <button
-                type="button"
-                onClick={() => onSelect(files.filter(Boolean))}
-                className="upload-btn-confirm px-5 py-2 rounded-lg text-sm font-medium bg-[#CEFF1B] border border-black"
-              >
-                Upload
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => onSelect(files.filter(Boolean))}
+              disabled={!selectedCount}
+              className="px-6 py-2.5 rounded-xl bg-[#CEFF1B] border border-black font-medium disabled:opacity-50"
+            >
+              Upload
+            </button>
           </div>
         </div>
 
-        <input ref={fileRef} type="file" accept="image/*,video/*" onChange={handleFiles} className="hidden" />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleFiles}
+          className="hidden"
+        />
       </div>
     </div>
   );
 }
 
-/* ================= SUCCESS (TOP OF GRID) ================= */
-
-function UploadSuccess({ onBack }) {
+function ConfirmModal({ title, message, onCancel, onConfirm }) {
   return (
-    <div className="fixed inset-0 z-[1001] flex items-center justify-center pointer-events-auto p-4">
-      <div className="upload-success-card rounded-2xl w-[90%] max-w-[600px] h-auto min-h-[300px] md:h-[400px] py-10 flex flex-col items-center justify-center shadow-[0_0_20px_#CEFF1B] bg-white dark:bg-[#2B2B2B]">
-        <div className="w-24 h-24 bg-[#CEFF1B] rounded-full flex items-center justify-center mb-6">
-          <img src="/right.svg" alt="" />
+    <>
+      <div className="fixed inset-0 z-[11000] bg-black/40 backdrop-blur-sm" />
+      <div className="fixed inset-0 z-[11001] flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-white rounded-3xl border border-[#CEFF1B] shadow-[0_0_30px_rgba(206,255,27,0.35)] p-6">
+          <h3 className="text-xl font-semibold text-black mb-2">{title}</h3>
+          <p className="text-sm text-gray-600 mb-6">{message}</p>
+
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-5 py-2.5 border border-black rounded-xl bg-white hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="px-5 py-2.5 rounded-xl bg-red-500 text-white border border-red-600 hover:bg-red-600 transition"
+            >
+              Yes, Remove
+            </button>
+          </div>
         </div>
+      </div>
+    </>
+  );
+}
 
-        <h3 className="text-2xl font-semibold mb-8 text-black dark:text-white text-center px-4">
-          You have successfully uploaded!
-        </h3>
+function SuccessToast({ title, message, onClose, type = "success" }) {
+  return (
+    <div className="fixed top-6 right-6 z-[12000] animate-[slideIn_.3s_ease]">
+      <div
+        className={`min-w-[320px] max-w-[420px] rounded-2xl border shadow-xl p-4 bg-white ${
+          type === "success"
+            ? "border-[#CEFF1B]"
+            : "border-red-300"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
+              type === "success" ? "bg-[#CEFF1B]" : "bg-red-100"
+            }`}
+          >
+            {type === "success" ? "✓" : "!"}
+          </div>
 
-        <div className="flex justify-center">
+          <div className="flex-1">
+            <h4 className="font-semibold text-black">{title}</h4>
+            {message ? <p className="text-sm text-gray-600 mt-1">{message}</p> : null}
+          </div>
+
           <button
             type="button"
-            onClick={onBack}
-            className="upload-btn-confirm px-12 py-3 rounded-lg bg-[#CEFF1B] border border-black font-semibold text-black transition-transform hover:scale-105"
+            onClick={onClose}
+            className="text-gray-500 hover:text-black text-lg"
           >
-            Back
+            ✕
           </button>
         </div>
       </div>
@@ -587,49 +938,48 @@ function UploadSuccess({ onBack }) {
   );
 }
 
-/* ================= INPUTS ================= */
-
-function Input({ label, placeholder, small, numericOnly, value, onChange }) {
+function Input({
+  label,
+  value,
+  onChange,
+  placeholder,
+  numericOnly = false,
+}) {
   return (
     <div>
-      <label className="block mb-1 font-medium">{label}</label>
+      <label className="block mb-1.5 text-sm font-medium text-black">
+        {label}
+      </label>
       <input
+        className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#CEFF1B] bg-white"
+        value={value}
         placeholder={placeholder}
-        value={value ?? ""}
         onChange={(e) => {
           let val = e.target.value;
-          if (numericOnly) {
-            val = val.replace(/[^0-9]/g, "");
-          }
-          onChange?.(val);
+          if (numericOnly) val = val.replace(/[^\d]/g, "");
+          onChange(val);
         }}
-        className={`${small ? "w-40" : "w-full"} border border-black rounded-md px-3 py-2 bg-transparent text-sm
-        outline-none focus:outline-none focus:!border-transparent focus:ring-0 focus:shadow-[0_0_15px_#CEFF1B] placeholder:text-gray-400`}
       />
     </div>
   );
 }
 
-function Textarea({ label, placeholder, limit, value, onChange }) {
-  const text = value ?? "";
-
+function Textarea({ label, value, onChange, placeholder, limit = 150 }) {
   return (
     <div>
-      <label className="block mb-1 font-medium">{label}</label>
+      <label className="block mb-1.5 text-sm font-medium text-black">
+        {label}
+      </label>
       <textarea
+        className="w-full border border-gray-300 rounded-xl px-4 py-3 min-h-[120px] outline-none focus:ring-2 focus:ring-[#CEFF1B] bg-white resize-none"
+        value={value}
         placeholder={placeholder}
-        rows={3}
-        value={text}
         maxLength={limit}
-        onChange={(e) => onChange?.(e.target.value)}
-        className="w-full border border-black rounded-md px-3 py-2 bg-transparent text-sm resize-none
-        outline-none focus:outline-none focus:!border-transparent focus:ring-0 focus:shadow-[0_0_15px_#CEFF1B] placeholder:text-gray-400"
+        onChange={(e) => onChange(e.target.value)}
       />
-      {limit && (
-        <p className="text-xs text-red-500 mt-1">
-          {text.length}/{limit} characters
-        </p>
-      )}
+      <div className="text-xs text-gray-500 mt-1 text-right">
+        {value.length}/{limit}
+      </div>
     </div>
   );
 }

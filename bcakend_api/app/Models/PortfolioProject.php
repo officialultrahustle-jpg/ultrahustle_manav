@@ -6,14 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class PortfolioProject extends Model
 {
+	protected $table = 'portfolio_projects';
 	protected $fillable = [
 		'portfolio_id',
-		'title',
-		'description',
-		'cost_cents',
-		'currency',
-		'cover_media_id',
-		'sort_order',
+        'title',
+        'description',
+        'cost_cents',
+        'currency',
+        'sort_order',
+        'cover_media_id',
 	];
 
 	public function portfolio()
@@ -23,7 +24,7 @@ class PortfolioProject extends Model
 
 	public function media()
 	{
-		return $this->hasMany(PortfolioMedia::class, 'project_id');
+		return $this->hasMany(PortfolioMedia::class, 'project_id')->orderBy('sort_order');
 	}
 
 	public function coverMedia()
