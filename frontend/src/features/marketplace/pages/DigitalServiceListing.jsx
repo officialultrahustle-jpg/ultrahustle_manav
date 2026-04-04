@@ -1015,7 +1015,7 @@ const TeamServiceListing = ({ theme, setTheme }) => {
                                             <div className="tsl-online-indicator"></div>
                                         </div>
                                         <div className="tsl-profile-title-box">
-                                            <h3>Name of the team</h3>
+                                            <h3>Name of the team</h3> 
                                             <p className="tsl-location">
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '4px', verticalAlign: 'middle', color: '#ccc' }}>
                                                     <circle cx="12" cy="12" r="10" />

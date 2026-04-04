@@ -1337,7 +1337,7 @@ const DigitalProductListing = ({ theme, setTheme }) => {
                                 >
                                     <ChevronDown size={20} color="#000" />
                                 </button>
-                            </div>
+                            </div> 
 
                             {/* Detailed Team Card */}
                             <div className="tsl-team-profile-card">
