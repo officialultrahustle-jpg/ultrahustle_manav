@@ -4,6 +4,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PortfolioController;
 use App\Http\Controllers\Api\TeamController;
+use App\Http\Controllers\Api\PublicUserController;
+
 Route::post('/register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
 Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
 Route::post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
@@ -134,3 +136,7 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
 
 });
 Route::get('/v1/teams/username/{username}/portfolio', [PortfolioController::class, 'showTeamPublic']);
+Route::get('/v1/users/username/{username}', [PublicUserController::class, 'profile']);
+Route::get('/v1/users/username/{username}/portfolio', [PortfolioController::class, 'showUserPublic']);
+// Route::get('/v1/users/username/{username}/portfolio', [PublicUserController::class, 'portfolio']);
+Route::get('/v1/users/username/{username}/follow-counts', [PublicUserController::class, 'followCounts']);

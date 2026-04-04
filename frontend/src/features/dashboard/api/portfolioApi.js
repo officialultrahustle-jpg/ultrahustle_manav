@@ -157,3 +157,13 @@ export const getPublicTeamPortfolio = async (username) => {
     throw new Error(extractErrorMessage(err));
   }
 };
+
+//public user portfolio
+export const getPublicUserPortfolio = async (username) => {
+  try {
+    const res = await publicApi.get(`/api/v1/users/username/${username}/portfolio`);
+    return unwrap(res);
+  } catch (err) {
+    throw new Error(extractErrorMessage(err));
+  }
+};
