@@ -214,8 +214,8 @@
                       <p class="subtext">This team collaborates on projects, manages contracts, and delivers work together inside a structured workspace.</p>
                       <p class="subtext">To accept the invitation and get started:</p>
                       <div class="button-wrap">
-                        <button class="button"
-                          >{{$inviteLink}}</button
+                        <a class="button" href={{$inviteLink}}
+                          >Accept Invitation</a
                         >
                       </div>
                       <p class="subtext">If you don’t have an account yet, you’ll be guided to create one before joining the team.</p>
