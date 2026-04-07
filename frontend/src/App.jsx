@@ -129,6 +129,12 @@ export default function App() {
                         }
                     />
                     <Route
+                        path="/marketplace"
+                        element={
+                            <Marketplace theme={theme} setTheme={setTheme} />
+                        }
+                    />
+                    <Route
                         path="/cart"
                         element={
                             <MyCartPage theme={theme} setTheme={setTheme} />
