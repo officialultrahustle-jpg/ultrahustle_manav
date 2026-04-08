@@ -10,6 +10,7 @@ use App\Models\PortfolioMedia;
 use App\Models\Team;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Models\User;
 
 class PortfolioController extends Controller
 {
@@ -114,6 +115,21 @@ class PortfolioController extends Controller
             'portfolio' => $portfolio,
             'projects'  => $projects,
         ]);
+    }
+
+    public function showTeamPublic(string $username)
+    {
+        $team = Team::where('username', $username)->firstOrFail();
+
+        return $this->showPortfolio('team', $team->id);
+    }
+
+    public function showUserPublic(string $username)
+    {
+        $user = User::whereRaw('LOWER(username) = ?', [strtolower($username)])
+            ->firstOrFail();
+
+        return $this->showPortfolio('user', $user->id);
     }
 
     protected function syncPortfolio(Request $request, string $ownerType, int $ownerId)
@@ -364,5 +380,58 @@ class PortfolioController extends Controller
         }
 
         abort(403, 'You are not allowed to manage this team portfolio.');
+    }
+
+    /* =========================================================
+     |  LISTING PORTFOLIO
+     * ========================================================= */
+
+    public function showListing(Request $request, $listing)
+    {
+        $this->authorizeListingAccess($request->user(), (int) $listing);
+
+        return $this->showPortfolio('listing', (int) $listing);
+    }
+
+    public function syncListing(Request $request, $listing)
+    {
+        $this->authorizeListingAccess($request->user(), (int) $listing);
+
+        return $this->syncPortfolio($request, 'listing', (int) $listing);
+    }
+
+    public function destroyListingProject(Request $request, $listing, $projectId)
+    {
+        $this->authorizeListingAccess($request->user(), (int) $listing);
+
+        $project = PortfolioProject::with('media')->findOrFail($projectId);
+
+        return $this->destroyProjectForOwner('listing', (int) $listing, $project);
+    }
+
+    public function destroyListingMedia(Request $request, $listing, $mediaId)
+    {
+        $this->authorizeListingAccess($request->user(), (int) $listing);
+
+        $media = PortfolioMedia::with('project.media')->findOrFail($mediaId);
+
+        return $this->destroyMediaForOwner('listing', (int) $listing, $media);
+    }
+
+    protected function authorizeListingAccess($user, int $listingId): void
+    {
+        $listing = DB::table('listings')
+            ->where('id', $listingId)
+            ->first();
+
+        if (!$listing) {
+            abort(404, 'Listing not found.');
+        }
+
+        if ((int) $listing->user_id === (int) $user->id) {
+            return;
+        }
+
+        abort(403, 'You are not allowed to manage this listing portfolio.');
     }
 }

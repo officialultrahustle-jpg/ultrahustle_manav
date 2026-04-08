@@ -4,6 +4,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PortfolioController;
 use App\Http\Controllers\Api\TeamController;
+use App\Http\Controllers\Api\PublicUserController;
+use App\Http\Controllers\Api\ListingController;
+
 Route::post('/register', [\App\Http\Controllers\Api\AuthController::class, 'register']);
 Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
 Route::post('/logout', [\App\Http\Controllers\Api\AuthController::class, 'logout']);
@@ -107,11 +110,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Public decline endpoint (token-only)
 Route::post('/v1/team-invites/{token}/decline', [\App\Http\Controllers\Api\TeamInviteController::class, 'decline']);
+    Route::get('/v1/teams/username/{username}', [TeamController::class, 'showByUsername']);
 
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::post('/teams', [TeamController::class, 'store']);
 
-    Route::get('/teams/username/{username}', [TeamController::class, 'showByUsername']);
 
     Route::get('/teams/{team}', [TeamController::class, 'show']);
     Route::patch('/teams/{team}', [TeamController::class, 'update']);
@@ -132,4 +135,20 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
 
 	Route::get('/creators/search', [\App\Http\Controllers\Api\CreatorSearchController::class, 'search'])->middleware('throttle:30,1');
 
+});
+Route::get('/v1/teams/username/{username}/portfolio', [PortfolioController::class, 'showTeamPublic']);
+Route::get('/v1/users/username/{username}', [PublicUserController::class, 'profile']);
+Route::get('/v1/users/username/{username}/portfolio', [PortfolioController::class, 'showUserPublic']);
+// Route::get('/v1/users/username/{username}/portfolio', [PublicUserController::class, 'portfolio']);
+Route::get('/v1/users/username/{username}/follow-counts', [PublicUserController::class, 'followCounts']);
+
+Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
+    Route::post('/listings', [ListingController::class, 'store']);
+
+    Route::prefix('listings/{listing}/portfolio')->group(function () {
+        Route::get('/', [PortfolioController::class, 'showListing']);
+        Route::post('/sync', [PortfolioController::class, 'syncListing']);
+        Route::delete('/projects/{project}', [PortfolioController::class, 'destroyListingProject']);
+        Route::delete('/media/{media}', [PortfolioController::class, 'destroyListingMedia']);
+    });
 });

@@ -1,18 +1,25 @@
 import React from "react";
-import { Trash2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import "./FAQSection.css";
 
-const FAQSection = ({ 
-  faqs, 
-  onAddFaq, 
-  onUpdateFaq, 
-  onRemoveFaq, 
-  showFooter = false, 
-  onSave, 
-  onSaveDraft 
+const FAQSection = ({
+  mode = "listing",
+  listingType = "",
+  faqs,
+  onAddFaq,
+  onUpdateFaq,
+  onRemoveFaq,
+  showFooter = false,
+  onSave,
+  onSaveDraft,
+  isSaving = false,
 }) => {
   return (
-    <div className="faq-section-container">
+    <div
+      className="faq-section-container"
+      data-mode={mode}
+      data-listing-type={listingType}
+    >
       <h2 className="faq-heading">FAQs</h2>
 
       {faqs.map((faq, index) => (
@@ -24,7 +31,7 @@ const FAQSection = ({
               type="button"
               className="delete-btn"
               onClick={() => onRemoveFaq(index)}
-              disabled={faqs.length === 1}
+              disabled={faqs.length === 1 || isSaving}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
@@ -37,10 +44,9 @@ const FAQSection = ({
             <input
               type="text"
               value={faq.q}
-              onChange={(e) =>
-                onUpdateFaq(index, "q", e.target.value)
-              }
+              onChange={(e) => onUpdateFaq(index, "q", e.target.value)}
               placeholder="What do you need to start?"
+              disabled={isSaving}
             />
           </div>
 
@@ -49,15 +55,14 @@ const FAQSection = ({
             <input
               type="text"
               value={faq.a}
-              onChange={(e) =>
-                onUpdateFaq(index, "a", e.target.value)
-              }
+              onChange={(e) => onUpdateFaq(index, "a", e.target.value)}
               placeholder="A brief and brand assets."
+              disabled={isSaving}
             />
           </div>
 
           {index === faqs.length - 1 && (
-            <button type="button" className="add-btn" onClick={onAddFaq}>
+            <button type="button" className="add-btn" onClick={onAddFaq} disabled={isSaving}>
               <Plus size={18} /> Add
             </button>
           )}
@@ -66,12 +71,12 @@ const FAQSection = ({
 
       {showFooter && (
         <div className="faq-footer">
-          <button type="button" className="draft-btn" onClick={onSaveDraft}>
-            Save as Draft
+          <button type="button" className="draft-btn" onClick={onSaveDraft} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save as Draft"}
           </button>
 
-          <button type="button" className="save-btn" onClick={onSave}>
-            Save
+          <button type="button" className="save-btn" onClick={onSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save"}
           </button>
         </div>
       )}
