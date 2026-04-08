@@ -139,10 +139,10 @@ const UserProfile = (props) => {
         "",
       availability: "",
       stats: {
-        karma: 300,
-        projectsCompleted: 47,
-        averageRating: 4.3,
-        members: 30,
+        karma: '',
+        projectsCompleted: '',
+        averageRating: '',
+        members: '',
       },
       badges: [],
       hashtags: [],
@@ -493,23 +493,23 @@ const UserProfile = (props) => {
     {
       image:
         "https://images.unsplash.com/photo-1561070791-2526d30994b5?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-      title: "Complete UI/UX Design for Mobile & Web more...",
+      title: "",
       type: "Service",
-      views: 3247,
-      price: "$2,500",
+      views: '',
+      price: "",
     },
   ];
 
   const reviewsData = {
-    average: 4.9,
-    total: 48,
-    breakdown: { 5: 38, 4: 7, 3: 2, 2: 1, 1: 0 },
+    average: '',
+    total: '',
+    breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
     reviews: [
       {
-        name: "Emily Chen",
-        date: "Nov 15, 2025",
-        rating: 5,
-        text: "Exceptional designer!",
+        name: "",
+        date: "",
+        rating: '',
+        text: "",
       },
     ],
   };
