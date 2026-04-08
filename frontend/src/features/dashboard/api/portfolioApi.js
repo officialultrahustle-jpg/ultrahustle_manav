@@ -52,13 +52,25 @@ const extractErrorMessage = (error) => {
   return "Request failed";
 };
 
-const getPortfolioBasePath = ({ mode = "user", teamId = null } = {}) => {
+const getPortfolioBasePath = ({
+  mode = "user",
+  teamId = null,
+  listingId = null,
+} = {}) => {
   if (mode === "team") {
     if (!teamId) {
       throw new Error("teamId is required for team portfolio");
     }
 
     return `/api/v1/teams/${teamId}/portfolio`;
+  }
+
+  if (mode === "listing") {
+    if (!listingId) {
+      throw new Error("listingId is required for listing portfolio");
+    }
+
+    return `/api/v1/listings/${listingId}/portfolio`;
   }
 
   return `/api/v1/me/portfolio`;
@@ -147,18 +159,17 @@ export const deletePortfolioMedia = async (mediaId, options = {}) => {
   }
 };
 
+/* ================= PUBLIC PORTFOLIO ================= */
+
 export const getPublicTeamPortfolio = async (username) => {
   try {
-    const res = await publicApi.get(
-      `/api/v1/teams/username/${username}/portfolio`
-    );
+    const res = await publicApi.get(`/api/v1/teams/username/${username}/portfolio`);
     return unwrap(res);
   } catch (err) {
     throw new Error(extractErrorMessage(err));
   }
 };
 
-//public user portfolio
 export const getPublicUserPortfolio = async (username) => {
   try {
     const res = await publicApi.get(`/api/v1/users/username/${username}/portfolio`);

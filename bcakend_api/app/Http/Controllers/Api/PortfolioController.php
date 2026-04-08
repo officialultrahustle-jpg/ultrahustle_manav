@@ -381,4 +381,57 @@ class PortfolioController extends Controller
 
         abort(403, 'You are not allowed to manage this team portfolio.');
     }
+
+    /* =========================================================
+     |  LISTING PORTFOLIO
+     * ========================================================= */
+
+    public function showListing(Request $request, $listing)
+    {
+        $this->authorizeListingAccess($request->user(), (int) $listing);
+
+        return $this->showPortfolio('listing', (int) $listing);
+    }
+
+    public function syncListing(Request $request, $listing)
+    {
+        $this->authorizeListingAccess($request->user(), (int) $listing);
+
+        return $this->syncPortfolio($request, 'listing', (int) $listing);
+    }
+
+    public function destroyListingProject(Request $request, $listing, $projectId)
+    {
+        $this->authorizeListingAccess($request->user(), (int) $listing);
+
+        $project = PortfolioProject::with('media')->findOrFail($projectId);
+
+        return $this->destroyProjectForOwner('listing', (int) $listing, $project);
+    }
+
+    public function destroyListingMedia(Request $request, $listing, $mediaId)
+    {
+        $this->authorizeListingAccess($request->user(), (int) $listing);
+
+        $media = PortfolioMedia::with('project.media')->findOrFail($mediaId);
+
+        return $this->destroyMediaForOwner('listing', (int) $listing, $media);
+    }
+
+    protected function authorizeListingAccess($user, int $listingId): void
+    {
+        $listing = DB::table('listings')
+            ->where('id', $listingId)
+            ->first();
+
+        if (!$listing) {
+            abort(404, 'Listing not found.');
+        }
+
+        if ((int) $listing->user_id === (int) $user->id) {
+            return;
+        }
+
+        abort(403, 'You are not allowed to manage this listing portfolio.');
+    }
 }
