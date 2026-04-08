@@ -1,9 +1,16 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { updateMyPassword } from "../../api/passwordApi";
-import { getMyActivities } from "../../api/personalInfoApi";
+import {
+  getMyActivities,
+  logoutCurrentDevice,
+  logoutOtherDevice,
+} from "../../api/personalInfoApi";
 
 export default function Security() {
+  const navigate = useNavigate();
+
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -15,9 +22,11 @@ export default function Security() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [activities, setActivities] = useState([]);
+
   const [activitiesLoading, setActivitiesLoading] = useState(false);
   const [activityDates, setActivityDates] = useState([]);
+  const [loggingOutId, setLoggingOutId] = useState(null);
+
   const handleChangePassword = async () => {
     setError("");
     setSuccess("");
@@ -39,6 +48,7 @@ export default function Security() {
 
     try {
       setIsSaving(true);
+
       await updateMyPassword({
         current_password: currentPassword,
         password: newPassword,
@@ -56,33 +66,57 @@ export default function Security() {
     }
   };
 
+  const loadActivities = async () => {
+    try {
+      setActivitiesLoading(true);
+
+      const res = await getMyActivities();
+      const data = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+        ? res
+        : [];
+
+      setActivityDates(data);
+    } catch (e) {
+      console.error("Failed to load activities", e);
+      setActivityDates([]);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
   useEffect(() => {
-    let mounted = true;
-
-    const loadActivities = async () => {
-      try {
-        setActivitiesLoading(true);
-
-        const res = await getMyActivities();
-        const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-
-        if (!mounted) return;
-
-        setActivityDates(data);
-      } catch (e) {
-        console.error("Failed to load activities", e);
-        if (mounted) setActivityDates([]);
-      } finally {
-        if (mounted) setActivitiesLoading(false);
-      }
-    };
-
     loadActivities();
-
-    return () => {
-      mounted = false;
-    };
   }, []);
+
+  const handleLogoutDevice = async (activity) => {
+    try {
+      setError("");
+      setSuccess("");
+      setLoggingOutId(activity.id);
+
+      if (activity.is_current) {
+        await logoutCurrentDevice();
+
+        // clear token/local auth
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        navigate("/login");
+        return;
+      }
+
+      await logoutOtherDevice(activity.id);
+      setSuccess("Device logged out successfully.");
+
+      await loadActivities();
+    } catch (e) {
+      setError(e?.message || "Failed to logout device.");
+    } finally {
+      setLoggingOutId(null);
+    }
+  };
 
   return (
     <div className="">
@@ -114,7 +148,11 @@ export default function Security() {
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 focus:outline-none bg-transparent hover:bg-transparent !bg-transparent dynamic-yellow-icon"
               >
-                {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showCurrentPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>
@@ -135,7 +173,11 @@ export default function Security() {
                 onClick={() => setShowNewPassword(!showNewPassword)}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 focus:outline-none bg-transparent hover:bg-transparent !bg-transparent dynamic-yellow-icon"
               >
-                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showNewPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>
@@ -158,7 +200,11 @@ export default function Security() {
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 focus:outline-none bg-transparent hover:bg-transparent !bg-transparent dynamic-yellow-icon"
               >
-                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showConfirmPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>
@@ -192,9 +238,8 @@ export default function Security() {
           </h3>
           <div className="flex-1 h-px bg-[#2B2B2B]" />
         </div>
-        <p className="mb-4 text-[16px] ">Currently login</p>
+        <p className="mb-4 text-[16px]">Currently login</p>
 
-        {/* Current Session */}
         {activitiesLoading ? (
           <p className="text-sm text-gray-500">Loading devices...</p>
         ) : activityDates.length === 0 ? (
@@ -208,8 +253,8 @@ export default function Security() {
               <div>
                 <p className="text-[16px] font-medium">
                   {activity.platform || "Unknown OS"}
-                  {activity.browser ? ` • ${activity.browser} ` : ""}
-                  {activity.device ? ` • ${activity.device} ` : ""}
+                  {activity.browser ? ` • ${activity.browser}` : ""}
+                  {activity.device ? ` • ${activity.device}` : ""}
                 </p>
 
                 <p className="text-[16px] text-gray-500">
@@ -218,7 +263,7 @@ export default function Security() {
 
                 {activity.is_current ? (
                   <p className="text-[16px] text-black flex items-center gap-1 dark:text-white">
-                    <span className="text-[#0FB400]"> &nbsp;●</span>
+                    <span className="text-[#0FB400]">&nbsp;●</span>
                     Your Current Session • Active at{" "}
                     {activity?.last_active_at
                       ? new Date(activity.last_active_at).toLocaleString("en-IN", {
@@ -247,11 +292,16 @@ export default function Security() {
                   </p>
                 )}
               </div>
-
-              {!activity.is_current && (
-                <button className="bg-[#FF0000] border border-black text-white text-xs px-4 py-1.5 rounded-lg font-medium">
-                  Log out
+              {Number(activity.is_current) === 1 ? (
+                <button
+                  onClick={() => handleLogoutDevice(activity)}
+                  disabled={loggingOutId === activity.id}
+                  className="border border-black text-white text-xs px-4 py-1.5 rounded-lg font-medium bg-[#FF0000] disabled:opacity-60"
+                >
+                  {loggingOutId === activity.id ? "Logging out..." : "Log out"}
                 </button>
+              ) : (
+                <span className="text-xs text-gray-500 font-medium">Logged out</span>
               )}
             </div>
           ))

@@ -457,8 +457,8 @@ class PersonalInfoController extends Controller
         return Language::select('id', 'value')->orderBy('value')->get();
     }
 
-    public function getUserActivities(){
-        return UserActivity::get();
+    public function getUserActivities(Request $request){
+        return UserActivity::where('user_id', $request->user()->id)->whereNotNull('session_id')->latest()->take(3)->get();
     }
 
     public function getUserName(Request $request)

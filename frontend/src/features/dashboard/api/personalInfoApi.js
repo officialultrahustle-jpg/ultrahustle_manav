@@ -1,6 +1,8 @@
 import axios from "axios";
 import { getAuthToken } from "../../auth/api/authApi";
 
+const TOKEN_KEY = "uh_auth_token";
+
 // Base URL for axios.
 // - Set VITE_API_BASE_URL to call your backend directly (e.g. http://159.89.193.253/).
 // - Leave empty to use same-origin requests (useful with Vite proxy in dev).
@@ -182,4 +184,35 @@ export const getPublicUserProfile = async (username) => {
 export const getPublicUserFollowCounts = async (username) => {
   const res = await publicApi.get(`/api/v1/users/username/${username}/follow-counts`);
   return res.data;
+};
+
+//logout other devices
+export const logoutOtherDevice = async (id) => {
+  const { data } = await api.post(`/api/logout-device/${id}`);
+  return data;
+};
+
+export const logoutCurrentDevice = async () => {
+  try {
+    await api.post('/api/logout', {}, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}`
+      }
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    const email = localStorage.getItem("uh_auth_email");
+    if (email) {
+      localStorage.removeItem(`uh_team_form_draft:create:${email}`);
+    }
+
+    // Always clear local data even if API fails
+    localStorage.removeItem(TOKEN_KEY);
+    // localStorage.removeItem('user');
+    // If using axios defaults
+    delete axios.defaults.headers.common['Authorization'];
+    // Redirect to login
+    window.location.href = '/login';
+  }
 };

@@ -127,6 +127,7 @@ class AuthController extends Controller
             }
 
             $token = $user->createToken('auth_token')->plainTextToken;
+            $tokenId = explode('|', $token)[0];
             $agent = new Agent();
             $agent->setUserAgent($request->userAgent());
             
@@ -136,12 +137,12 @@ class AuthController extends Controller
 
             UserActivity::create([
                 'user_id' => $user->id,
-                'session_id' => Str::uuid(), // or real session/token id if available
+                'session_id' => $tokenId, // ✅ important
                 'ip_address' => $request->ip(),
                 'device' => $agent->device() ?: 'Unknown Device',
                 'platform' => $agent->platform() ?: 'Unknown OS',
                 'browser' => $agent->browser() ?: 'Unknown Browser',
-                'location' => null, // optional later
+                'location' => null,
                 'last_active_at' => now(),
                 'is_current' => true,
             ]);
@@ -450,23 +451,82 @@ class AuthController extends Controller
         ];
     }
 
-    function logout(Request $request){
+    public function logout(Request $request){
         // Revoke current token (Sanctum)
-        $request->user()->currentAccessToken()->delete();
+        // $request->user()->currentAccessToken()->delete();
+
+        $user = $request->user();
+        $currentToken = $user->currentAccessToken();
+
+        if (!$currentToken) {
+            return response()->json([
+                'message' => 'No active session found.'
+            ], 401);
+        }
+
+        $tokenId = $currentToken->id;
+
+        // Mark this device/session as logged out
+        UserActivity::where('user_id', $user->id)
+            ->where('session_id', $tokenId)
+            ->update([
+                'is_current' => false,
+                'last_active_at' => now(),
+            ]);
+
+        // Optional logout log row
         UserActivity::create([
-            'user_id' => $request->user()->id,
+            'user_id' => $user->id,
             'type' => 'logout',
             'activity_at' => now(),
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
         ]);
 
-        UserActivity::where('user_id', $request->user()->id)
-            ->where('type', 'login')
-            ->where('is_current', true)
-            ->update(['is_current' => false]);
+        // Revoke current token
+        $currentToken->delete();
+
         return response()->json([
             'message' => 'Logged out successfully'
         ]);
     }
+
+    public function logoutDevice(Request $request, $id)
+    {
+        $user = $request->user();
+        
+        $activity = UserActivity::where('user_id', $user->id)
+            ->where('id', $id)
+            ->first();
+
+        if (!$activity) {
+            return response()->json([
+                'message' => 'Device not found.'
+            ], 404);
+        }
+
+        // If this is current device, use normal logout instead
+        if ($activity->is_current) {
+            return response()->json([
+                'message' => 'Use normal logout for current device.'
+            ], 400);
+        }
+
+        // Delete Sanctum token if session_id stored
+        if ($activity->session_id) {
+            $user->tokens()->where('id', $activity->session_id)->delete();
+        }
+
+        // Mark activity/session inactive
+        $activity->update([
+            'is_current' => false,
+            'last_active_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => 'Device logged out successfully.'
+        ]);
+    }
+
+
 }
