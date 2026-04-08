@@ -32,7 +32,10 @@ import PublicUserProfile from "./features/dashboard/pages/PublicUserProfile";
 import SoloContractListing from "./features/marketplace/pages/SoloContractListing";
 import Dashboard from "./features/dashboard/pages/Dashboard";
 import ManageTeam from "./features/dashboard/pages/ManageTeam";
-import MilestonesPage from "./features/marketplace/pages/MilestonesPage";
+import CreatorMilestonesPage from "./features/marketplace/pages/CreatorMilestonesPage";
+import ClientMilestonePage from "./features/marketplace/pages/ClientMilestonePage";
+import CreatorMilestoneCancellation from "./features/marketplace/pages/CreatorMilestoneCancellation";
+import ClientMilestoneCancellation from "./features/marketplace/pages/ClientMilestoneCancellation";
 import SoloMilestonesPage from "./features/marketplace/pages/SoloMilestonesPage";
 import CreateServiceListing from "./features/marketplace/pages/CreateServiceListing";
 import CreateDigitalProduct from "./features/marketplace/pages/CreateDigitalProduct";
@@ -55,6 +58,7 @@ import MyCartPage from "./features/marketplace/pages/MyCartPage";
 import MyOrderCreatorPage from "./features/marketplace/pages/MyOrderCreatorPage";
 import MyOrderClientPage from "./features/marketplace/pages/MyOrderClientPage";
 import ActiveProjectPage from "./features/marketplace/pages/ActiveProjectPage";
+import ResolutionCenter from "./features/marketplace/pages/ResolutionCenter";
 
 
 
@@ -72,52 +76,247 @@ export default function App() {
         localStorage.setItem(THEME_KEY, theme);
     }, [theme]);
 
-  return (
-    <Router>
-      <div className="app">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/setting" element={<ProtectedRoute><User theme={theme} setTheme={setTheme} /></ProtectedRoute>} />
-          <Route path="/desktop-forgot-password" element={<DesktopForgotPassword />} />
-          <Route path="/desktop-email-verification" element={<DesktopEmailVerification />} />
-          <Route path="/login" element={<DesktopLogin />} />
-          <Route path="/signup" element={<DesktopSignup />} />
-          <Route path="/onboarding" element={<CreatorOnboarding />} />
-          <Route path="/username" element={<UserUserName />} />
-          <Route path="/role-selection" element={<RoleSelection />} />
-          <Route path="/client-work-type-selection" element={<WorkTypeSelection />} />
-          <Route path="/client-goals-selection" element={<GoalsSelection />} />
-          <Route path="/client-needs" element={<ClientNeeds />} />
-          <Route path="/client-business-details" element={<BusinessDetails />} />
-          <Route path="/client-setup-workspace" element={<SetupWorkspace />} />
-          <Route path="/client-role-selection" element={<RoleSelection />} />
-          <Route path="/creator-work-type-selection" element={<WorkTypeSelectionForCreator />} />
-          <Route path="/creator-goals-selection" element={<CreatorGoalsSelection />} />
-          <Route path="/creator-needs" element={<CreatorNeeds />} />
-          <Route path="/creator-setup-workspace" element={<SetupWorkspaceForCreator />} />
-          <Route path="/creator-profile-setup" element={<CreatorProfileSetup />} />
-          <Route path="/client-profile-setup" element={<ClientProfileSetup />} />
-          <Route path="/create-team" element={<CreateTeam theme={theme} setTheme={setTheme} />} />
-          <Route path="/edit-team/:teamId" element={<EditTeam theme={theme} setTheme={setTheme} />} />
-          <Route path="/team-profile/:username" element={<TeamProfileLight theme={theme} setTheme={setTheme} />} />
-          <Route path="/public-team-profile/:username" element={<PublicTeamProfile theme={theme} setTheme={setTheme} />} />
-          <Route path="/user-profile" element={<ProtectedRoute><UserProfile theme={theme} setTheme={setTheme} /></ProtectedRoute>} />
-          <Route path="/public-user-profile/:username" element={<PublicUserProfile theme={theme} setTheme={setTheme} />} />
-          <Route path="/contracts-listing" element={<SoloContractListing theme={theme} setTheme={setTheme} />} />
-          <Route path="/milestones" element={<MilestonesPage theme={theme} setTheme={setTheme} />} />
-          <Route path="/solo-milestones" element={<SoloMilestonesPage theme={theme} setTheme={setTheme} />} />
-          <Route path="/create-service-listing" element={<CreateServiceListing theme={theme} setTheme={setTheme} />} />
-          <Route path="/create-digital-product" element={<CreateDigitalProduct theme={theme} setTheme={setTheme} />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard theme={theme} setTheme={setTheme} /></ProtectedRoute>} />
-          <Route path="/manage-team" element={<ManageTeam theme={theme} setTheme={setTheme} />} />
-          <Route path="/add-listing" element={<AddNewListing theme={theme} setTheme={setTheme} />} />
-          <Route path="/team-invite" element={<TeamInvitePage theme={theme} setTheme={setTheme} />} />
-          <Route
-            path="/my-listings"
-            element={<MyListingPage theme={theme} setTheme={setTheme} />}
-          />
-          <Route path="/team-service-listing" element={<TeamServiceListing theme={theme} setTheme={setTheme} />} />
-          <Route path="/service-listing" element={<ServiceListing theme={theme} setTheme={setTheme} />} />
+    return (
+        <Router>
+            <div className="app">
+                <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route
+                        path="/setting"
+                        element={
+                            <ProtectedRoute>
+                                <User theme={theme} setTheme={setTheme} />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/desktop-forgot-password"
+                        element={<DesktopForgotPassword />}
+                    />
+                    <Route
+                        path="/desktop-email-verification"
+                        element={<DesktopEmailVerification />}
+                    />
+                    <Route path="/login" element={<DesktopLogin />} />
+                    <Route path="/signup" element={<DesktopSignup />} />
+                    <Route path="/onboarding" element={<CreatorOnboarding />} />
+                    <Route path="/username" element={<UserUserName />} />
+                    <Route path="/role-selection" element={<RoleSelection />} />
+                    <Route
+                        path="/client-work-type-selection"
+                        element={<WorkTypeSelection />}
+                    />
+                    <Route
+                        path="/client-goals-selection"
+                        element={<GoalsSelection />}
+                    />
+                    <Route path="/client-needs" element={<ClientNeeds />} />
+                    <Route
+                        path="/client-business-details"
+                        element={<BusinessDetails />}
+                    />
+                    <Route
+                        path="/client-setup-workspace"
+                        element={<SetupWorkspace />}
+                    />
+                    <Route
+                        path="/client-role-selection"
+                        element={<RoleSelection />}
+                    />
+                    <Route
+                        path="/creator-work-type-selection"
+                        element={<WorkTypeSelectionForCreator />}
+                    />
+                    <Route
+                        path="/creator-goals-selection"
+                        element={<CreatorGoalsSelection />}
+                    />
+                    <Route path="/creator-needs" element={<CreatorNeeds />} />
+                    <Route
+                        path="/creator-setup-workspace"
+                        element={<SetupWorkspaceForCreator />}
+                    />
+                    <Route
+                        path="/creator-profile-setup"
+                        element={<CreatorProfileSetup />}
+                    />
+                    <Route
+                        path="/client-profile-setup"
+                        element={<ClientProfileSetup />}
+                    />
+                    <Route
+                        path="/marketplace"
+                        element={
+                            <Marketplace theme={theme} setTheme={setTheme} />
+                        }
+                    />
+                    <Route
+                        path="/create-team"
+                        element={
+                            <CreateTeam theme={theme} setTheme={setTheme} />
+                        }
+                    />
+                    <Route
+                        path="/edit-team/:teamId"
+                        element={<EditTeam theme={theme} setTheme={setTheme} />}
+                    />
+                    <Route
+                        path="/team-profile/:username"
+                        element={
+                            <TeamProfileLight
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/public-team-profile"
+                        element={
+                            <PublicTeamProfile
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/user-profile"
+                        element={
+                            <ProtectedRoute>
+                                <UserProfile
+                                    theme={theme}
+                                    setTheme={setTheme}
+                                />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/public-user-profile"
+                        element={
+                            <PublicUserProfile
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/contracts-listing"
+                        element={
+                            <SoloContractListing
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/creator-milestone"
+                        element={
+                            <CreatorMilestonesPage
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/client-milestone"
+                        element={
+                            <ClientMilestonePage
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/creator-milestone-cancellation"
+                        element={
+                            <CreatorMilestoneCancellation
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/client-milestone-cancellation"
+                        element={
+                            <ClientMilestoneCancellation
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/solo-milestones"
+                        element={
+                            <SoloMilestonesPage
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/create-service-listing"
+                        element={
+                            <CreateServiceListing
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/create-digital-product"
+                        element={
+                            <CreateDigitalProduct
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/dashboard"
+                        element={
+                            <ProtectedRoute>
+                                <Dashboard theme={theme} setTheme={setTheme} />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/manage-team"
+                        element={
+                            <ManageTeam theme={theme} setTheme={setTheme} />
+                        }
+                    />
+                    <Route
+                        path="/add-listing"
+                        element={
+                            <AddNewListing theme={theme} setTheme={setTheme} />
+                        }
+                    />
+                    <Route
+                        path="/team-invite"
+                        element={
+                            <TeamInvitePage theme={theme} setTheme={setTheme} />
+                        }
+                    />
+                    <Route
+                        path="/my-listings"
+                        element={
+                            <MyListingPage theme={theme} setTheme={setTheme} />
+                        }
+                    />
+                    <Route
+                        path="/team-service-listing"
+                        element={
+                            <TeamServiceListing
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/service-listing"
+                        element={
+                            <ServiceListing theme={theme} setTheme={setTheme} />
+                        }
+                    />
 
                     <Route
                         path="/digital-product-listing"
@@ -126,12 +325,6 @@ export default function App() {
                                 theme={theme}
                                 setTheme={setTheme}
                             />
-                        }
-                    />
-                    <Route
-                        path="/marketplace"
-                        element={
-                            <Marketplace theme={theme} setTheme={setTheme} />
                         }
                     />
                     <Route
@@ -225,6 +418,15 @@ export default function App() {
                         path="/active-projects"
                         element={
                             <ActiveProjectPage
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        }
+                    />
+                    <Route
+                        path="/resolution-center"
+                        element={
+                            <ResolutionCenter
                                 theme={theme}
                                 setTheme={setTheme}
                             />
