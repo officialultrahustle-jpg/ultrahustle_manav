@@ -322,7 +322,7 @@ export default function CreateCourse({ theme, setTheme }) {
           : "Your course has been created successfully.";
 
       setSaveSuccess(message);
-      showSuccess(status === "draft" ? "Draft Saved!" : "Course Created!", message);
+      showSuccess(status === "draft" ? "Draft Saved!" : "Course Created!", message, status !== "draft");
     } catch (e) {
       setSaveError(e?.message || "Failed to save course.");
       setSaveSuccess("");
