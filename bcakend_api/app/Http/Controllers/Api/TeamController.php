@@ -102,7 +102,8 @@ class TeamController extends Controller
 
         $memberships = $team
             ->memberships()
-            ->with('user:id,full_name,email')
+            ->with('user:id,username,full_name,email')
+            ->whereNull('left_at')
             ->orderByDesc('id')
             ->get();
 
@@ -285,7 +286,8 @@ class TeamController extends Controller
 
         $memberships = $team
             ->memberships()
-            ->with('user:id,full_name,email')
+            ->with('user:id,username,full_name,email')
+            ->whereNull('left_at')
             ->orderByDesc('id')
             ->get();
 
@@ -315,7 +317,7 @@ class TeamController extends Controller
         $member->save();
 
         return $this->successResponse('Member updated.', [
-            'membership' => $this->membershipPayload($member->fresh(['user:id,full_name,email'])),
+            'membership' => $this->membershipPayload($member->fresh(['user:id,username,full_name,email'])),
         ]);
     }
 
@@ -516,6 +518,7 @@ class TeamController extends Controller
             'left_at' => $membership->left_at,
             'user' => $user ? [
                 'id' => $user->id,
+                'username' => $user->username,
                 'full_name' => $user->full_name,
                 'email' => $user->email,
             ] : null,

@@ -528,9 +528,15 @@ const TeamProfileContent = ({
                                     {toInitials(m.name)}
                                   </div>
                                 </div>
+
                                 <div className="memberInfo">
                                   <div className="memberName">{m.name}</div>
                                   <div className="memberRole">{m.role}</div>
+                                  {m.username ? (
+                                    <div className="memberUsername">@{m.username}</div>
+                                  ) : (
+                                    <div className="memberUsername text-gray-400">No username</div>
+                                  )}
                                 </div>
                               </div>
 

@@ -9,7 +9,7 @@ import NavbarLight from "../../../components/layout/UserNavbar";
 import Sidebar from "../../../components/layout/Sidebar";
 import TeamProfileContent from "./TeamProfileContent";
 
-import { getTeam, getTeamByUsername } from "../api/teamApi";
+import { getTeam, getTeamByUsername, getTeamMembers } from "../api/teamApi";
 import { getMyPortfolio } from "../api/portfolioApi";
 
 const TeamProfileLight = (props) => {
@@ -57,18 +57,30 @@ const TeamProfileLight = (props) => {
         const fetchedTeam =
           res?.data?.team ||
           res?.team ||
+          res?.data ||
           null;
-
-        const fetchedMemberships =
-          res?.data?.memberships ||
-          res?.memberships ||
-          [];
 
         if (!fetchedTeam) {
           throw new Error("Team not found.");
         }
 
         setTeam(fetchedTeam);
+
+        // always fetch memberships separately using team id
+        let membersRes = null;
+        try {
+          membersRes = await getTeamMembers(fetchedTeam.id);
+        } catch {
+          membersRes = null;
+        }
+
+        const fetchedMemberships =
+          membersRes?.data?.memberships ||
+          membersRes?.memberships ||
+          membersRes?.data?.members ||
+          membersRes?.members ||
+          [];
+
         setMemberships(Array.isArray(fetchedMemberships) ? fetchedMemberships : []);
 
         if (fetchedTeam?.id) {
