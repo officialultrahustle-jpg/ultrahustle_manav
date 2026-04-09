@@ -11,6 +11,7 @@ import LessonSection from "../components/LessonSection";
 import { createListing } from "../api/listingApi";
 import "../../../Darkuser.css";
 import "../../onboarding/components/OnboardingSelect.css";
+import { useNavigate } from "react-router-dom";
 
 const LISTING_TYPE = "course";
 
@@ -20,6 +21,8 @@ export default function CreateCourse({ theme, setTheme }) {
     [],
   );
 
+  const navigate = useNavigate();
+  
   const subCategoriesMap = useMemo(
     () => ({
       Design: ["Logo Design", "UI/UX", "Branding"],
@@ -78,13 +81,15 @@ export default function CreateCourse({ theme, setTheme }) {
     open: false,
     title: "",
     message: "",
+    shouldRedirect: false,
   });
 
-  const showSuccess = (title, message) => {
+  const showSuccess = (title, message, shouldRedirect = false) => {
     setSuccessPopup({
       open: true,
       title,
       message,
+      shouldRedirect
     });
   };
 
@@ -799,7 +804,7 @@ export default function CreateCourse({ theme, setTheme }) {
             document.body,
           )}
 
-        {successPopup.open &&
+        {/* {successPopup.open &&
           createPortal(
             <div className="fixed inset-0 z-[12000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
               <div className="w-full max-w-[420px] rounded-[24px] bg-white border border-[#CEFF1B] shadow-[0_0_30px_rgba(206,255,27,0.35)] p-6 text-center">
@@ -817,13 +822,18 @@ export default function CreateCourse({ theme, setTheme }) {
 
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
                     setSuccessPopup({
                       open: false,
                       title: "",
                       message: "",
-                    })
-                  }
+                      shouldRedirect: false,
+                    });
+
+                    if (successPopup.shouldRedirect) {
+                      navigate("/my-listings");
+                    }
+                  }}
                   className="px-8 py-3 rounded-lg bg-[#CEFF1B] border border-black font-semibold text-black"
                 >
                   OK
@@ -831,8 +841,26 @@ export default function CreateCourse({ theme, setTheme }) {
               </div>
             </div>,
             document.body,
-          )}
+          )} */}
       </div>
+      <SuccessPopup
+        open={successPopup.open}
+        title={successPopup.title}
+        message={successPopup.message}
+        onClose={() => setSuccessPopup({ open: false, title: "", message: "" })}
+        onClick={() => {
+          setSuccessPopup({
+            open: false,
+            title: "",
+            message: "",
+            shouldRedirect: false,
+          });
+
+          if (successPopup.shouldRedirect) {
+            navigate("/my-listings");
+          }
+        }}
+      />
     </>
   );
 }
@@ -1003,6 +1031,31 @@ function UploadGrid({ onSelect, onBack, blurred }) {
         />
       </div>
     </div>
+  );
+}
+
+function SuccessPopup({ open, title, message, onClose, onClick }) {
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] bg-black/30 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-[#1f1f1f] rounded-3xl shadow-[0_0_30px_rgba(206,255,27,0.4)] border border-[#CEFF1B] px-8 py-10 w-full max-w-[420px] text-center animate-[fadeIn_.25s_ease]">
+        <div className="w-20 h-20 rounded-full bg-[#CEFF1B] mx-auto flex items-center justify-center mb-6 shadow-lg">
+          <img src="/right.svg" alt="success" className="w-10 h-10" />
+        </div>
+
+        <h3 className="text-2xl font-bold text-black dark:text-white mb-3">{title}</h3>
+        <p className="text-gray-600 dark:text-gray-300 mb-8">{message}</p>
+
+        <button
+          onClick={onClick}
+          className="bg-[#CEFF1B] text-black font-semibold px-6 py-3 rounded-xl border border-black hover:scale-[1.02] transition"
+        >
+          Continue
+        </button>
+      </div>
+    </div>,
+    document.body
   );
 }
 

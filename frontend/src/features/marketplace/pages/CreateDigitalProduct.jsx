@@ -10,6 +10,7 @@ import DeliverablesSection from "../components/DeliverablesSection";
 import { createListing } from "../api/listingApi";
 import "../../../Darkuser.css";
 import "../../onboarding/components/OnboardingSelect.css";
+import { useNavigate } from "react-router-dom";
 
 const LISTING_TYPE = "digital_product";
 
@@ -18,6 +19,8 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
     () => ["Design", "Development", "Marketing", "Writing"],
     [],
   );
+
+  const navigate = useNavigate();
 
   const subCategoriesMap = useMemo(
     () => ({
@@ -52,13 +55,15 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
     open: false,
     title: "",
     message: "",
+    shouldRedirect: false,
   });
 
-  const showSuccess = (title, message) => {
+  const showSuccess = (title, message, shouldRedirect = false) => {
     setSuccessPopup({
       open: true,
       title,
       message,
+      shouldRedirect
     });
   };
   React.useEffect(() => {
@@ -340,6 +345,7 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
     showSuccess(
       status === "draft" ? "Draft Saved!" : "Digital Product Created!",
       message,
+      status !== "draft"
     );
   } catch (e) {
     setSaveError(e?.message || "Failed to save listing.");
@@ -809,6 +815,18 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
         title={successPopup.title}
         message={successPopup.message}
         onClose={() => setSuccessPopup({ open: false, title: "", message: "" })}
+        onClick={() => {
+          setSuccessPopup({
+            open: false,
+            title: "",
+            message: "",
+            shouldRedirect: false,
+          });
+
+          if (successPopup.shouldRedirect) {
+            navigate("/my-listings");
+          }
+        }}
       />
     </>
   );
@@ -984,7 +1002,7 @@ function UploadGrid({ onSelect, onBack, blurred }) {
   );
 }
 
-function SuccessPopup({ open, title, message, onClose }) {
+function SuccessPopup({ open, title, message, onClose, onClick }) {
   if (!open) return null;
 
   return createPortal(
@@ -998,7 +1016,7 @@ function SuccessPopup({ open, title, message, onClose }) {
         <p className="text-gray-600 dark:text-gray-300 mb-8">{message}</p>
 
         <button
-          onClick={onClose}
+          onClick={onClick}
           className="bg-[#CEFF1B] text-black font-semibold px-6 py-3 rounded-xl border border-black hover:scale-[1.02] transition"
         >
           Continue
