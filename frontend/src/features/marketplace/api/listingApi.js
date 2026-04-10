@@ -150,3 +150,113 @@ export const getMyListings = async () => {
     throw new Error(extractErrorMessage(err));
   }
 };
+
+export const getListingByUsername = async (username) => {
+  try {
+    const res = await api.get(`/api/v1/listings/${encodeURIComponent(username)}`);
+    return unwrap(res);
+  } catch (err) {
+    throw new Error(extractErrorMessage(err));
+  }
+};
+
+export const updateListing = async (username, payload) => {
+  try {
+    const formData = new FormData();
+
+    formData.append("_method", "PUT");
+    formData.append("listing_type", payload.listing_type || "");
+    formData.append("status", payload.status || "published");
+    formData.append("title", payload.title || "");
+    formData.append("category", payload.category || "");
+    formData.append("sub_category", payload.sub_category || "");
+    formData.append("short_description", payload.short_description || "");
+    formData.append("about", payload.about || "");
+    formData.append("ai_powered", payload.ai_powered ? "1" : "0");
+    formData.append("seller_mode", payload.seller_mode || "Solo");
+    formData.append("team_name", payload.team_name || "");
+
+    if (payload.cover_file) {
+      formData.append("cover_file", payload.cover_file);
+    }
+
+    (payload.tags || []).forEach((tag, index) => {
+      formData.append(`tags[${index}]`, tag);
+    });
+
+    (payload.faqs || []).forEach((faq, index) => {
+      formData.append(`faqs[${index}][q]`, faq.q || "");
+      formData.append(`faqs[${index}][a]`, faq.a || "");
+    });
+
+    (payload.links || []).forEach((link, index) => {
+      formData.append(`links[${index}]`, link);
+    });
+
+    (payload.deliverables || []).forEach((item, index) => {
+      if (item.file) {
+        formData.append(`deliverables[${index}][file]`, item.file);
+      }
+      formData.append(`deliverables[${index}][notes]`, item.notes || "");
+    });
+
+    const details = payload.details || {};
+
+    if (details.product_type) {
+      formData.append("details[product_type]", details.product_type);
+    }
+
+    if (details.course_level) {
+      formData.append("details[course_level]", details.course_level);
+    }
+
+    (details.tools || []).forEach((tool, index) => {
+      formData.append(`details[tools][${index}]`, tool);
+    });
+
+    (details.learning_points || []).forEach((point, index) => {
+      formData.append(`details[learning_points][${index}]`, point);
+    });
+
+    (details.languages || []).forEach((language, index) => {
+      formData.append(`details[languages][${index}]`, language);
+    });
+
+    if (details.preview_video_file) {
+      formData.append("details[preview_video_file]", details.preview_video_file);
+    }
+
+    (details.lessons || []).forEach((lesson, index) => {
+      formData.append(`details[lessons][${index}][title]`, lesson.title || "");
+      formData.append(`details[lessons][${index}][description]`, lesson.description || "");
+      formData.append(`details[lessons][${index}][media_type]`, lesson.media_type || "");
+
+      if (lesson.media_file) {
+        formData.append(`details[lessons][${index}][media_file]`, lesson.media_file);
+      }
+    });
+
+    Object.entries(details.packages || {}).forEach(([packageName, pkg], index) => {
+      formData.append(`details[packages][${index}][package_name]`, packageName);
+      formData.append(`details[packages][${index}][price]`, pkg.price || "");
+
+      (pkg.included || []).forEach((item, itemIndex) => {
+        formData.append(`details[packages][${index}][included][${itemIndex}]`, item);
+      });
+
+      (pkg.deliveryFormats || []).forEach((item, itemIndex) => {
+        formData.append(`details[packages][${index}][deliveryFormats][${itemIndex}]`, item);
+      });
+    });
+
+    const res = await api.post(`/api/v1/listings/${encodeURIComponent(username)}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return unwrap(res);
+  } catch (err) {
+    throw new Error(extractErrorMessage(err));
+  }
+};

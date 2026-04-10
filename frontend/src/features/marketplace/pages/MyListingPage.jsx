@@ -10,7 +10,7 @@ import "../../../Darkuser.css";
 const PackageIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m7.5 4.27 9 5.15" />
-    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4A2 2 0 0 0 13 22l7-4A2 2 0 0 0 21 16Z" />
     <path d="m3.3 7 8.7 5 8.7-5" />
     <path d="M12 22V12" />
   </svg>
@@ -92,13 +92,6 @@ const TrashIcon = () => (
   </svg>
 );
 
-const listingTypeToTab = {
-  digital_product: "Products",
-  service: "Services",
-  course: "Courses",
-  webinar: "Webinar",
-};
-
 const tabToListingType = {
   Products: "digital_product",
   Services: "service",
@@ -106,8 +99,24 @@ const tabToListingType = {
   Webinar: "webinar",
 };
 
+const viewBaseByType = {
+  digital_product: "digital-product",
+  service: "service",
+  course: "course",
+  webinar: "webinar",
+};
+
+const editBaseByType = {
+  digital_product: "edit-digital-product",
+  service: "edit-service",
+  course: "edit-course",
+  webinar: "edit-webinar",
+};
+
 const getImageUrl = (path = "") => {
-  if (!path) return "https://images.unsplash.com/photo-1556761175-5973dc0f32d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80";
+  if (!path) {
+    return "https://images.unsplash.com/photo-1556761175-5973dc0f32d7?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80";
+  }
   if (path.startsWith("http")) return path;
   if (path.startsWith("/storage/")) return path;
   if (path.startsWith("storage/")) return `/${path}`;
@@ -123,6 +132,44 @@ const formatDate = (value) => {
     day: "2-digit",
     year: "numeric",
   });
+};
+
+const getListingUsername = (item) => {
+  return (
+    item?.username ||
+    item?.slug ||
+    item?.listing_username ||
+    item?.raw?.username ||
+    item?.raw?.slug ||
+    item?.raw?.listing_username ||
+    ""
+  );
+};
+
+const getViewRoute = (item) => {
+  if (item.listingType === "team") {
+    const username = getListingUsername(item);
+    return username ? `/team/${username}` : "/team-profile";
+  }
+
+  const base = viewBaseByType[item.listingType];
+  const username = getListingUsername(item);
+
+  if (!base || !username) return "/marketplace";
+  return `/${base}/${username}`;
+};
+
+const getEditRoute = (item) => {
+  if (item.listingType === "team") {
+    const username = getListingUsername(item);
+    return username ? `/edit-team/${username}` : "/edit-team";
+  }
+
+  const base = editBaseByType[item.listingType];
+  const username = getListingUsername(item);
+
+  if (!base || !username) return "/add-listing";
+  return `/${base}/${username}`;
 };
 
 export default function MyListings({ theme = "light", setTheme }) {
@@ -142,7 +189,7 @@ export default function MyListings({ theme = "light", setTheme }) {
   const [searchTerm, setSearchTerm] = useState("");
 
   const [listings, setListings] = useState([]);
-  const [teamCards, setTeamCards] = useState([]); // keep separate if you later fetch teams
+  const [teamCards, setTeamCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -167,15 +214,13 @@ export default function MyListings({ theme = "light", setTheme }) {
 
         const res = await getMyListings();
 
-        const rawListings =
-          res?.listings ||
-          res?.data?.listings ||
-          [];
+        const rawListings = res?.listings || res?.data?.listings || [];
 
         const mapped = Array.isArray(rawListings)
           ? rawListings.map((item) => ({
               id: item.id,
               title: item.title || "Untitled Listing",
+              username: item.username || item.slug || item.listing_username || "",
               price: item.price ? `$${item.price}` : item.price_text || "—",
               updated: formatDate(item.updated_at || item.created_at),
               status: item.status || "draft",
@@ -233,31 +278,9 @@ export default function MyListings({ theme = "light", setTheme }) {
     });
   }, [listings, teamCards, activeTab, statusFilter, searchTerm]);
 
-  const getRoute = (item) => {
-    if (activeTab === "Teams") {
-      return "/team-profile";
-    }
-
-    switch (item.listingType) {
-      case "digital_product":
-        return `/edit-digital-product/${item.id}`;
-      case "service":
-        return `/edit-service/${item.id}`;
-      case "course":
-        return `/edit-course/${item.id}`;
-      case "webinar":
-        return `/edit-webinar/${item.id}`;
-      default:
-        return "/marketplace";
-    }
-  };
-
   return (
     <div className={`user-page ${theme} min-h-screen relative overflow-hidden mylis-shell`}>
-      <UserNavbar
-        toggleSidebar={() => setSidebarOpen((p) => !p)}
-        theme={theme}
-      />
+      <UserNavbar toggleSidebar={() => setSidebarOpen((p) => !p)} theme={theme} />
 
       <div className="pt-[85px] flex relative z-10 w-full h-full">
         <Sidebar
@@ -331,12 +354,12 @@ export default function MyListings({ theme = "light", setTheme }) {
                           {status === "published"
                             ? "Published"
                             : status === "draft"
-                              ? "Draft"
-                              : status === "paused"
-                                ? "Paused"
-                                : status === "active"
-                                  ? "Active"
-                                  : "All Statuses"}
+                            ? "Draft"
+                            : status === "paused"
+                            ? "Paused"
+                            : status === "active"
+                            ? "Active"
+                            : "All Statuses"}
                         </li>
                       ))}
                     </ul>
@@ -371,7 +394,7 @@ export default function MyListings({ theme = "light", setTheme }) {
                     <div
                       className={`mylis-card ${openDropdown === item.id ? "active-dropdown" : ""}`}
                       key={item.id}
-                      onClick={() => navigate(getRoute(item))}
+                      onClick={() => navigate(getViewRoute(item))}
                     >
                       <div className="mylis-card-img-wrap">
                         <img src={item.img} alt={item.title} className="mylis-card-img" />
@@ -412,12 +435,18 @@ export default function MyListings({ theme = "light", setTheme }) {
                             </button>
 
                             {openDropdown === item.id && (
-                              <div className="mylis-dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                              <div
+                                className="mylis-dropdown-menu"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <div className="mylis-dropdown-header">Actions</div>
 
                                 <button
                                   className="mylis-dropdown-item"
-                                  onClick={() => navigate(getRoute(item))}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(getEditRoute(item));
+                                  }}
                                 >
                                   <EditIcon /> Edit
                                 </button>

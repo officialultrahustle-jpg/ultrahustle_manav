@@ -7,6 +7,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ListingController extends Controller
 {
@@ -74,7 +76,9 @@ class ListingController extends Controller
             'details.lessons.*.media_type' => 'nullable|in:image,video',
         ]);
 
-        $listing = DB::transaction(function () use ($request, $user, $validated) {
+        $username = $this->makeUniqueUsername($validated['title']);
+
+        $listing = DB::transaction(function () use ($request, $user, $validated, $username) {
             $coverPath = null;
 
             if ($request->hasFile('cover_file')) {
@@ -93,6 +97,7 @@ class ListingController extends Controller
 
             $listingId = DB::table('listings')->insertGetId([
                 'user_id' => $user->id,
+                'username' => $username,
                 'listing_type' => $validated['listing_type'],
                 'title' => $validated['title'],
                 'category' => $validated['category'] ?? null,
@@ -338,25 +343,633 @@ class ListingController extends Controller
 
     //my listings
     public function myListings(Request $request): JsonResponse
-{
-    $user = $request->user();
+    {
+        $user = $request->user();
 
-    $listings = DB::table('listings')
-        ->where('user_id', $user->id)
-        ->orderByDesc('id')
-        ->get([
-            'id',
-            'title',
-            'listing_type',
-            'status',
-            'cover_media_path',
-            'created_at',
-            'updated_at',
+        $listings = DB::table('listings')
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->get([
+                'id',
+                'title',
+                'username',
+                'listing_type',
+                'status',
+                'cover_media_path',
+                'created_at',
+                'updated_at',
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'listings' => $listings,
+        ]);
+    }
+
+    private function makeUniqueUsername(string $title, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($title);
+
+        if ($base === '') {
+            $base = 'listing';
+        }
+
+        $username = $base;
+        $counter = 1;
+
+        while (true) {
+            $query = DB::table('listings')->where('username', $username);
+
+            if ($ignoreId) {
+                $query->where('id', '!=', $ignoreId);
+            }
+
+            if (!$query->exists()) {
+                return $username;
+            }
+
+            $username = $base . '-' . $counter;
+            $counter++;
+        }
+    }
+
+    private function getListingFullData(int $listingId): array
+    {
+        $listing = DB::table('listings')->where('id', $listingId)->first();
+
+        if (!$listing) {
+            abort(404, 'Listing not found.');
+        }
+
+        $faqs = Schema::hasTable('listing_faqs')
+            ? DB::table('listing_faqs')
+                ->where('listing_id', $listingId)
+                ->orderBy('sort_order')
+                ->get(['question', 'answer'])
+                ->map(fn ($row) => [
+                    'q' => $row->question,
+                    'a' => $row->answer,
+                ])
+                ->values()
+                ->all()
+            : [];
+
+        $links = Schema::hasTable('listing_links')
+            ? DB::table('listing_links')
+                ->where('listing_id', $listingId)
+                ->orderBy('sort_order')
+                ->pluck('link_url')
+                ->values()
+                ->all()
+            : [];
+
+        $deliverables = Schema::hasTable('listing_deliverables')
+            ? DB::table('listing_deliverables')
+                ->where('listing_id', $listingId)
+                ->orderBy('sort_order')
+                ->get([
+                    'id',
+                    'file_path',
+                    'file_name',
+                    'file_mime',
+                    'file_size',
+                    'notes',
+                ])
+                ->map(fn ($row) => [
+                    'id' => $row->id,
+                    'file_path' => $row->file_path,
+                    'file_name' => $row->file_name,
+                    'file_mime' => $row->file_mime,
+                    'file_size' => $row->file_size,
+                    'file_url' => $row->file_path ? Storage::disk('public')->url($row->file_path) : null,
+                    'notes' => $row->notes,
+                ])
+                ->values()
+                ->all()
+            : [];
+
+        $details = [];
+        $tags = [];
+
+        if (!empty($listing->tags_json)) {
+            $decodedTags = json_decode($listing->tags_json, true);
+            $tags = is_array($decodedTags) ? array_values($decodedTags) : [];
+        }
+
+        $tools = [];
+        if (!empty($listing->tools_json)) {
+            $decodedTools = json_decode($listing->tools_json, true);
+            $tools = is_array($decodedTools) ? array_values($decodedTools) : [];
+        }
+
+        if (!empty($tools)) {
+            $details['tools'] = $tools;
+        }
+
+        if ($listing->listing_type === 'digital_product') {
+            $productDetails = null;
+
+            if (Schema::hasTable('digital_product_details')) {
+                $productDetails = DB::table('digital_product_details')
+                    ->where('listing_id', $listingId)
+                    ->first();
+            }
+
+            if ($productDetails) {
+                $details['product_type'] = $productDetails->product_type;
+            }
+
+            $packages = [];
+
+            if (Schema::hasTable('digital_product_packages')) {
+                $packageRows = DB::table('digital_product_packages')
+                    ->where('listing_id', $listingId)
+                    ->orderBy('id')
+                    ->get();
+
+                foreach ($packageRows as $packageRow) {
+                    $included = [];
+                    $deliveryFormats = [];
+
+                    if (Schema::hasTable('digital_product_package_items')) {
+                        $items = DB::table('digital_product_package_items')
+                            ->where('package_id', $packageRow->id)
+                            ->get();
+
+                        foreach ($items as $item) {
+                            $values = json_decode($item->item_value_json, true);
+                            $values = is_array($values) ? array_values($values) : [];
+
+                            if ($item->item_type === 'included') {
+                                $included = $values;
+                            }
+
+                            if ($item->item_type === 'delivery_format') {
+                                $deliveryFormats = $values;
+                            }
+                        }
+                    }
+
+                    $packages[$packageRow->package_name] = [
+                        'price' => $packageRow->price,
+                        'included' => $included,
+                        'deliveryFormats' => $deliveryFormats,
+                    ];
+                }
+            }
+
+            $details['packages'] = $packages;
+        }
+
+        if ($listing->listing_type === 'course') {
+            $courseDetails = null;
+
+            if (Schema::hasTable('course_listing_details')) {
+                $courseDetails = DB::table('course_listing_details')
+                    ->where('listing_id', $listingId)
+                    ->first();
+            }
+
+            if ($courseDetails) {
+                $details['course_level'] = $courseDetails->course_level;
+
+                $learningPoints = json_decode($courseDetails->learning_points_json ?? '[]', true);
+                $languages = json_decode($courseDetails->languages_json ?? '[]', true);
+
+                $details['learning_points'] = is_array($learningPoints) ? $learningPoints : [];
+                $details['languages'] = is_array($languages) ? $languages : [];
+
+                $details['preview_video_url'] = $courseDetails->preview_video_path
+                    ? Storage::disk('public')->url($courseDetails->preview_video_path)
+                    : null;
+            }
+
+            $lessons = Schema::hasTable('course_listing_lessons')
+                ? DB::table('course_listing_lessons')
+                    ->where('listing_id', $listingId)
+                    ->orderBy('sort_order')
+                    ->get()
+                    ->map(fn ($row) => [
+                        'title' => $row->title,
+                        'description' => $row->description,
+                        'media_type' => $row->media_type,
+                        'media_path' => $row->media_path,
+                        'media_url' => $row->media_path ? Storage::disk('public')->url($row->media_path) : null,
+                    ])
+                    ->values()
+                    ->all()
+                : [];
+
+            $details['lessons'] = $lessons;
+        }
+
+        return [
+            'id' => $listing->id,
+            'user_id' => $listing->user_id,
+            'title' => $listing->title,
+            'username' => $listing->username,
+            'listing_type' => $listing->listing_type,
+            'status' => $listing->status,
+            'category' => $listing->category,
+            'sub_category' => $listing->sub_category,
+            'short_description' => $listing->short_description,
+            'about' => $listing->about,
+            'seller_mode' => $listing->seller_mode,
+            'team_name' => $listing->team_name,
+            'ai_powered' => (bool) $listing->ai_powered,
+            'cover_media_path' => $listing->cover_media_path,
+            'cover_media_url' => $listing->cover_media_path ? Storage::disk('public')->url($listing->cover_media_path) : null,
+            'tags' => $tags,
+            'faqs' => $faqs,
+            'links' => $links,
+            'deliverables' => $deliverables,
+            'details' => $details,
+            'created_at' => $listing->created_at,
+            'updated_at' => $listing->updated_at,
+        ];
+    }
+
+    public function getListingByUsername(Request $request, string $username): JsonResponse
+    {
+        $user = $request->user();
+
+        $listing = DB::table('listings')
+            ->where('user_id', $user->id)
+            ->where('username', $username)
+            ->first();
+
+        if (!$listing) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Listing not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'listing' => $this->getListingFullData($listing->id),
+        ]);
+    }
+
+    public function updateListing(Request $request, string $username): JsonResponse
+    {
+        $user = $request->user();
+
+        $existing = DB::table('listings')
+            ->where('user_id', $user->id)
+            ->where('username', $username)
+            ->first();
+
+        if (!$existing) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Listing not found.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'listing_type' => 'required|in:course,digital_product,webinar,service',
+            'status' => 'nullable|in:draft,published',
+
+            'title' => 'required|string|max:255',
+            'category' => 'nullable|string|max:150',
+            'sub_category' => 'nullable|string|max:150',
+            'short_description' => 'nullable|string',
+            'about' => 'nullable|string',
+
+            'ai_powered' => 'nullable|boolean',
+            'seller_mode' => 'nullable|in:Solo,Team',
+            'team_name' => 'nullable|string|max:255',
+
+            'cover_file' => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,mov,avi,mkv|max:20480',
+
+            'tags' => 'nullable|array',
+            'tags.*' => 'nullable|string|max:100',
+
+            'details.tools' => 'nullable|array',
+            'details.tools.*' => 'nullable|string|max:255',
+
+            'faqs' => 'nullable|array',
+            'faqs.*.q' => 'nullable|string',
+            'faqs.*.a' => 'nullable|string',
+
+            'links' => 'nullable|array',
+            'links.*' => 'nullable|string',
+
+            'deliverables' => 'nullable|array',
+            'deliverables.*.file' => 'nullable|file|max:20480',
+            'deliverables.*.notes' => 'nullable|string',
+
+            'details' => 'nullable|array',
+            'details.product_type' => 'nullable|string|max:150',
+
+            'details.packages' => 'nullable|array',
+            'details.packages.*.package_name' => 'required_with:details.packages|string|in:Basic,Standard,Premium',
+            'details.packages.*.price' => 'nullable',
+            'details.packages.*.included' => 'nullable|array',
+            'details.packages.*.included.*' => 'nullable|string|max:255',
+            'details.packages.*.deliveryFormats' => 'nullable|array',
+            'details.packages.*.deliveryFormats.*' => 'nullable|string|max:255',
+            'details.course_level' => 'nullable|string|max:100',
+
+            'details.learning_points' => 'nullable|array',
+            'details.learning_points.*' => 'nullable|string|max:255',
+
+            'details.languages' => 'nullable|array',
+            'details.languages.*' => 'nullable|string|max:100',
+
+            'details.preview_video_file' => 'nullable|file|mimes:mp4,mov,avi,mkv,webm|max:51200',
+
+            'details.lessons' => 'nullable|array',
+            'details.lessons.*.title' => 'nullable|string|max:255',
+            'details.lessons.*.description' => 'nullable|string',
+            'details.lessons.*.media_file' => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,mov,avi,mkv,webm|max:20480',
+            'details.lessons.*.media_type' => 'nullable|in:image,video',
         ]);
 
-    return response()->json([
-        'success' => true,
-        'listings' => $listings,
-    ]);
-}
+        $listing = DB::transaction(function () use ($request, $user, $validated, $existing) {
+            $coverPath = $existing->cover_media_path;
+
+            if ($request->hasFile('cover_file')) {
+                if ($coverPath && Storage::disk('public')->exists($coverPath)) {
+                    Storage::disk('public')->delete($coverPath);
+                }
+
+                $coverPath = $request->file('cover_file')->store('listings/covers', 'public');
+            }
+
+            $cleanTags = array_values(array_filter(array_map(
+                fn($v) => trim((string) $v),
+                $validated['tags'] ?? []
+            )));
+
+            $cleanTools = array_values(array_filter(array_map(
+                fn($v) => trim((string) $v),
+                data_get($validated, 'details.tools', [])
+            )));
+
+            $newUsername = $existing->username;
+            if (($validated['title'] ?? '') !== $existing->title) {
+                $newUsername = $this->makeUniqueUsername($validated['title'], $existing->id);
+            }
+
+            DB::table('listings')
+                ->where('id', $existing->id)
+                ->update([
+                    'listing_type' => $validated['listing_type'],
+                    'title' => $validated['title'],
+                    'username' => $newUsername,
+                    'category' => $validated['category'] ?? null,
+                    'sub_category' => $validated['sub_category'] ?? null,
+                    'short_description' => $validated['short_description'] ?? null,
+                    'about' => $validated['about'] ?? null,
+                    'seller_mode' => $validated['seller_mode'] ?? 'Solo',
+                    'team_name' => $validated['team_name'] ?? null,
+                    'tags_json' => !empty($cleanTags) ? json_encode($cleanTags) : null,
+                    'tools_json' => !empty($cleanTools) ? json_encode($cleanTools) : null,
+                    'ai_powered' => (int) ($validated['ai_powered'] ?? false),
+                    'cover_media_path' => $coverPath,
+                    'status' => $validated['status'] ?? 'published',
+                    'updated_at' => now(),
+                ]);
+
+            DB::table('listing_faqs')->where('listing_id', $existing->id)->delete();
+            DB::table('listing_links')->where('listing_id', $existing->id)->delete();
+            DB::table('listing_deliverables')->where('listing_id', $existing->id)->delete();
+
+            foreach (($validated['faqs'] ?? []) as $index => $faq) {
+                $question = trim((string) ($faq['q'] ?? ''));
+                $answer = trim((string) ($faq['a'] ?? ''));
+
+                if ($question === '' && $answer === '') continue;
+
+                DB::table('listing_faqs')->insert([
+                    'listing_id' => $existing->id,
+                    'question' => $question,
+                    'answer' => $answer,
+                    'sort_order' => $index,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            foreach (($validated['links'] ?? []) as $index => $link) {
+                $value = trim((string) $link);
+                if ($value === '') continue;
+
+                DB::table('listing_links')->insert([
+                    'listing_id' => $existing->id,
+                    'link_url' => $value,
+                    'sort_order' => $index,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            foreach (($request->input('deliverables', []) ?? []) as $index => $deliverableInput) {
+                $file = $request->file("deliverables.$index.file");
+                $notes = trim((string) ($deliverableInput['notes'] ?? ''));
+
+                if (!$file && $notes === '') continue;
+
+                $filePath = null;
+                $fileName = null;
+                $fileMime = null;
+                $fileSize = null;
+
+                if ($file) {
+                    $filePath = $file->store('listings/deliverables', 'public');
+                    $fileName = $file->getClientOriginalName();
+                    $fileMime = $file->getMimeType();
+                    $fileSize = $file->getSize();
+                }
+
+                DB::table('listing_deliverables')->insert([
+                    'listing_id' => $existing->id,
+                    'file_path' => $filePath,
+                    'file_name' => $fileName,
+                    'file_mime' => $fileMime,
+                    'file_size' => $fileSize,
+                    'notes' => $notes ?: null,
+                    'sort_order' => $index,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            if (Schema::hasTable('digital_product_details')) {
+                DB::table('digital_product_details')->where('listing_id', $existing->id)->delete();
+            }
+            if (Schema::hasTable('digital_product_packages')) {
+                $packageIds = DB::table('digital_product_packages')
+                    ->where('listing_id', $existing->id)
+                    ->pluck('id');
+
+                if ($packageIds->isNotEmpty()) {
+                    DB::table('digital_product_package_items')->whereIn('package_id', $packageIds)->delete();
+                }
+
+                DB::table('digital_product_packages')->where('listing_id', $existing->id)->delete();
+            }
+
+            if (Schema::hasTable('course_listing_details')) {
+                DB::table('course_listing_details')->where('listing_id', $existing->id)->delete();
+            }
+            if (Schema::hasTable('course_listing_lessons')) {
+                DB::table('course_listing_lessons')->where('listing_id', $existing->id)->delete();
+            }
+
+            if (($validated['listing_type'] ?? '') === 'digital_product') {
+                if (Schema::hasTable('digital_product_details')) {
+                    DB::table('digital_product_details')->insert([
+                        'listing_id' => $existing->id,
+                        'product_type' => data_get($validated, 'details.product_type'),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                foreach ((data_get($validated, 'details.packages') ?? []) as $package) {
+                    $price = $package['price'] ?? null;
+
+                    $included = array_values(array_filter(array_map(
+                        fn($v) => trim((string) $v),
+                        $package['included'] ?? []
+                    )));
+
+                    $deliveryFormats = array_values(array_filter(array_map(
+                        fn($v) => trim((string) $v),
+                        $package['deliveryFormats'] ?? []
+                    )));
+
+                    $hasData =
+                        ($price !== null && $price !== '') ||
+                        !empty($included) ||
+                        !empty($deliveryFormats);
+
+                    if (!$hasData) {
+                        continue;
+                    }
+
+                    $packageId = DB::table('digital_product_packages')->insertGetId([
+                        'listing_id' => $existing->id,
+                        'package_name' => $package['package_name'],
+                        'price' => ($price !== '' && $price !== null) ? $price : null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    if (!empty($included)) {
+                        DB::table('digital_product_package_items')->insert([
+                            'package_id' => $packageId,
+                            'item_type' => 'included',
+                            'item_value_json' => json_encode($included),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+
+                    if (!empty($deliveryFormats)) {
+                        DB::table('digital_product_package_items')->insert([
+                            'package_id' => $packageId,
+                            'item_type' => 'delivery_format',
+                            'item_value_json' => json_encode($deliveryFormats),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
+            if (($validated['listing_type'] ?? '') === 'course') {
+                $learningPoints = array_values(array_filter(array_map(
+                    fn($v) => trim((string) $v),
+                    data_get($validated, 'details.learning_points', [])
+                )));
+
+                $languages = array_values(array_filter(array_map(
+                    fn($v) => trim((string) $v),
+                    data_get($validated, 'details.languages', [])
+                )));
+
+                $previewVideo = $request->file('details.preview_video_file');
+
+                $previewVideoPath = null;
+                $previewVideoName = null;
+                $previewVideoMime = null;
+                $previewVideoSize = null;
+
+                if ($previewVideo) {
+                    $previewVideoPath = $previewVideo->store('listings/course/preview-videos', 'public');
+                    $previewVideoName = $previewVideo->getClientOriginalName();
+                    $previewVideoMime = $previewVideo->getMimeType();
+                    $previewVideoSize = $previewVideo->getSize();
+                }
+
+                DB::table('course_listing_details')->insert([
+                    'listing_id' => $existing->id,
+                    'course_level' => data_get($validated, 'details.course_level'),
+                    'learning_points_json' => !empty($learningPoints) ? json_encode($learningPoints) : null,
+                    'languages_json' => !empty($languages) ? json_encode($languages) : null,
+                    'preview_video_path' => $previewVideoPath,
+                    'preview_video_name' => $previewVideoName,
+                    'preview_video_mime' => $previewVideoMime,
+                    'preview_video_size' => $previewVideoSize,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                foreach ((data_get($validated, 'details.lessons') ?? []) as $index => $lesson) {
+                    $title = trim((string) ($lesson['title'] ?? ''));
+                    $description = trim((string) ($lesson['description'] ?? ''));
+                    $mediaType = $lesson['media_type'] ?? null;
+
+                    $mediaFile = $request->file("details.lessons.$index.media_file");
+
+                    if ($title === '' && $description === '' && !$mediaFile) {
+                        continue;
+                    }
+
+                    $mediaPath = null;
+                    $mediaName = null;
+                    $mediaMime = null;
+                    $mediaSize = null;
+
+                    if ($mediaFile) {
+                        $mediaPath = $mediaFile->store('listings/course/lessons', 'public');
+                        $mediaName = $mediaFile->getClientOriginalName();
+                        $mediaMime = $mediaFile->getMimeType();
+                        $mediaSize = $mediaFile->getSize();
+
+                        if (!$mediaType) {
+                            $mediaType = str_starts_with((string) $mediaMime, 'video/') ? 'video' : 'image';
+                        }
+                    }
+
+                    DB::table('course_listing_lessons')->insert([
+                        'listing_id' => $existing->id,
+                        'title' => $title ?: null,
+                        'description' => $description ?: null,
+                        'media_type' => $mediaType,
+                        'media_path' => $mediaPath,
+                        'media_name' => $mediaName,
+                        'media_mime' => $mediaMime,
+                        'media_size' => $mediaSize,
+                        'sort_order' => $index,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+            }
+
+            return DB::table('listings')->where('id', $existing->id)->first();
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Listing updated successfully.',
+            'listing_id' => $listing->id,
+            'listing' => $this->getListingFullData($listing->id),
+        ]);
+    }
 }

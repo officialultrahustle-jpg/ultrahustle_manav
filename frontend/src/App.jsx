@@ -366,6 +366,9 @@ export default function App() {
                             <CourseListing theme={theme} setTheme={setTheme} />
                         }
                     />
+                    <Route path="/digital-product/:username" element={<ProductDeliverables />} />
+                    <Route path="/course/:username" element={<CourseDeliverables />} />
+                    <Route path="/webinar/:username" element={<WebinarDeliverables />} />
                     <Route
                         path="/product-deliverables"
                         element={
@@ -405,6 +408,7 @@ export default function App() {
                             <CreateWebinar theme={theme} setTheme={setTheme} />
                         }
                     />
+                    
                     <Route
                         path="/messages"
                         element={
