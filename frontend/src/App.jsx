@@ -428,41 +428,32 @@ export default function App() {
                             <CourseListing theme={theme} setTheme={setTheme} />
                         }
                     />
-                    <Route
+                   {/*  <Route
                         path="/digital-product/:username"
                         element={<ProductDeliverables />}
                     />
                     <Route
                         path="/course/:username"
                         element={<CourseDeliverables />}
-                    />
+                    /> */}
                     <Route
                         path="/edit-course/:username"
                         element={<EditCourse />}
                     />
-                    <Route
+                    {/* <Route
                         path="/webinar/:username"
                         element={<WebinarDeliverables />}
-                    />
+                    /> */}
                     <Route
                         path="/edit-webinar/:username"
                         element={<EditWebinar />}
                     />
-                    <Route
-                        path="/edit-digital-product/:username"
-                        element={<EditDigitalProduct />}
-                    />
-                    {/* <Route path="/digital-product/:username" element={<ProductDeliverables />} /> */}
-                    {/* <Route path="/course/:username" element={<CourseDeliverables />} /> */}
-                    <Route
-                        path="/edit-course/:username"
-                        element={<EditCourse />}
-                    />
-                    {/* <Route path="/webinar/:username" element={<WebinarDeliverables />} /> */}
-                    <Route
-                        path="/edit-webinar/:username"
-                        element={<EditWebinar />}
-                    />
+                    <Route path="/edit-digital-product/:username" element={<EditDigitalProduct />} />
+                    <Route path="/digital-product/:username" element={<DigitalProductListing />} />
+                    <Route path="/course/:username" element={<CourseListing />} />
+                    <Route path="/edit-course/:username" element={<EditCourse />} />
+                    <Route path="/webinar/:username" element={<WebinarListing />} />
+                    <Route path="/edit-webinar/:username" element={<EditWebinar />} />
                     <Route
                         path="/product-deliverables"
                         element={
