@@ -162,3 +162,4 @@ Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
         Route::delete('/media/{media}', [PortfolioController::class, 'destroyListingMedia']);
     });
 });
+Route::get('/v1/languages', [ListingController::class, 'getLanguages']);

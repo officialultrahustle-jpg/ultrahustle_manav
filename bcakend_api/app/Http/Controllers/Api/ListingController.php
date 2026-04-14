@@ -1516,4 +1516,41 @@ class ListingController extends Controller
             'teams' => $teams,
         ]);
     }
+
+    public function getLanguages(): JsonResponse
+    {
+        if (!Schema::hasTable('languages')) {
+            return response()->json([
+                'success' => true,
+                'languages' => [],
+            ]);
+        }
+
+        $columns = Schema::getColumnListing('languages');
+
+        $valueColumn = in_array('value', $columns, true) ? 'value' : 'name';
+
+        $query = DB::table('languages');
+
+        if (in_array('status', $columns, true)) {
+            $query->where('status', 'active');
+        }
+
+        $languages = $query
+            ->orderBy($valueColumn)
+            ->get([
+                'id',
+                DB::raw($valueColumn . ' as value'),
+            ])
+            ->map(fn ($row) => [
+                'id' => $row->id,
+                'value' => $row->value,
+            ])
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'languages' => $languages,
+        ]);
+    }
 }

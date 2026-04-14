@@ -10,6 +10,7 @@ import {
   createListing,
   getListingByUsername,
   updateListing,
+  getLanguages,
 } from "../api/listingApi";
 import "../../../Darkuser.css";
 import "../../onboarding/components/OnboardingSelect.css";
@@ -68,7 +69,8 @@ export default function CreateWebinar({
     [],
   );
 
-  const languageOptions = ["English", "Hindi", "Spanish", "French", "German"];
+  const [languageOptions, setLanguageOptions] = useState([]);
+  const [languagesLoading, setLanguagesLoading] = useState(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -83,7 +85,7 @@ export default function CreateWebinar({
   const [saveSuccess, setSaveSuccess] = useState("");
   const [cover, setCover] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
-
+  
   const [aiPowered, setAiPowered] = useState(false);
 
   const [form, setForm] = useState({
@@ -120,6 +122,32 @@ export default function CreateWebinar({
   const [faqs, setFaqs] = useState([{ q: "", a: "" }]);
   const [deliverables, setDeliverables] = useState([{ file: null, notes: "" }]);
   const [links, setLinks] = useState([""]);
+
+  React.useEffect(() => {
+    const loadLanguages = async () => {
+      try {
+        setLanguagesLoading(true);
+
+        const res = await getLanguages();
+        const rows = Array.isArray(res?.languages) ? res.languages : [];
+
+        setLanguageOptions(
+          rows
+            .map((item) => ({
+              id: item.id,
+              value: String(item.value || "").trim(),
+            }))
+            .filter((item) => item.value)
+        );
+      } catch (e) {
+        setLanguageOptions([]);
+      } finally {
+        setLanguagesLoading(false);
+      }
+    };
+
+    loadLanguages();
+  }, []);
 
   React.useEffect(() => {
     if (isModalOpen) document.body.style.overflow = "hidden";
@@ -698,12 +726,13 @@ export default function CreateWebinar({
                       <CustomSelect
                         value=""
                         onChange={(val) => {
-                          if (!languages.some((x) => x.toLowerCase() === val.toLowerCase())) {
+                          if (!languages.some((x) => x.toLowerCase() === String(val).toLowerCase())) {
                             setLanguages((prev) => [...prev, val]);
                           }
                         }}
-                        options={languageOptions}
-                        placeholder="Select language"
+                        options={languageOptions.map((item) => item.value)}
+                        placeholder={languagesLoading ? "Loading languages..." : "Select language"}
+                        disabled={languagesLoading}
                       />
 
                       {languages.length > 0 && (

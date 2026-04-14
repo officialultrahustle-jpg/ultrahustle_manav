@@ -357,3 +357,13 @@ export const getMyTeams = async () => {
     throw new Error(extractErrorMessage(err));
   }
 };
+
+//fetch all languages
+export const getLanguages = async () => {
+  try {
+    const res = await api.get("/api/v1/languages");
+    return unwrap(res);
+  } catch (err) {
+    throw new Error(extractErrorMessage(err));
+  }
+};
