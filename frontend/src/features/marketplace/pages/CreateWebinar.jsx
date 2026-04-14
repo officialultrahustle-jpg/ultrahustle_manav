@@ -44,6 +44,14 @@ export default function CreateWebinar({
     [],
   );
 
+  const getTodayDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const webinarLevels = useMemo(
     () => ["Beginner", "Intermediate", "Advanced", "Expert"],
     [],
@@ -322,6 +330,12 @@ export default function CreateWebinar({
     if (!String(form.webinarLevel || "").trim()) return "Webinar level is required.";
     if (!String(schedule.date || "").trim()) return "Schedule date is required.";
     if (!String(schedule.startTime || "").trim()) return "Start time is required.";
+
+    const today = getTodayDateString();
+    if (schedule.date < today) {
+      return "Past dates are not allowed for webinar schedule.";
+    }
+
     return "";
   };
 
@@ -734,9 +748,10 @@ export default function CreateWebinar({
                       <div className="csl-field">
                         <label className="csl-label">Date</label>
                         <input
-                          type="date"
                           className="csl-input"
-                          value={schedule.date}
+                          type="date"
+                          value={schedule.date || ""}
+                          min={getTodayDateString()}
                           onChange={(e) => updateSchedule("date", e.target.value)}
                         />
                       </div>
