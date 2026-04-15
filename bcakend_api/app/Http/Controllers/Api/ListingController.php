@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 class ListingController extends Controller
 {
@@ -119,6 +120,18 @@ class ListingController extends Controller
                 data_get($validated, 'details.tools', [])
             )));
 
+            $listingPrice = null;
+
+            if (($validated['listing_type'] ?? '') === 'digital_product') {
+                $listingPrice = data_get($validated, 'details.price');
+            } elseif (($validated['listing_type'] ?? '') === 'webinar') {
+                $listingPrice = data_get($validated, 'details.ticket_price');
+            } elseif (($validated['listing_type'] ?? '') === 'course') {
+                $listingPrice = data_get($validated, 'details.price');
+            } elseif (($validated['listing_type'] ?? '') === 'service') {
+                $listingPrice = data_get($validated, 'details.price');
+            }
+
             $listingId = DB::table('listings')->insertGetId([
                 'user_id' => $user->id,
                 'username' => $username,
@@ -126,6 +139,7 @@ class ListingController extends Controller
                 'title' => $validated['title'],
                 'category' => $validated['category'] ?? null,
                 'sub_category' => $validated['sub_category'] ?? null,
+                'price' => $listingPrice,
                 'short_description' => $validated['short_description'] ?? null,
                 'about' => $validated['about'] ?? null,
                 'seller_mode' => $validated['seller_mode'] ?? 'Solo',
@@ -458,7 +472,7 @@ class ListingController extends Controller
                 'username',
                 'listing_type',
                 'status',
-                // 'price',
+                'price',
                 // 'views_count',
                 'cover_media_path',
                 'created_at',
@@ -506,7 +520,7 @@ class ListingController extends Controller
             abort(404, 'Listing not found.');
         }
 
-        $user = DB::table('users')
+        $user = User::with('personalInfo')
             ->where('id', $listing->user_id)
             ->first();
 
@@ -769,6 +783,7 @@ class ListingController extends Controller
             ->get([
                 'listings.id',
                 'listings.title',
+                'listings.price',
                 'listings.username as listing_username',
                 'listings.listing_type',
                 'listings.cover_media_path',
@@ -779,6 +794,7 @@ class ListingController extends Controller
                 'title' => $row->title,
                 'listing_username' => $row->listing_username,
                 'listing_type' => $row->listing_type,
+                'price' => $row->price,
                 'cover_media_path' => $row->cover_media_path,
                 'cover_media_url' => $row->cover_media_path ? Storage::disk('public')->url($row->cover_media_path) : null,
                 'creator_username' => $row->creator_username,
@@ -801,6 +817,7 @@ class ListingController extends Controller
                 'listings.title',
                 'listings.username as listing_username',
                 'listings.listing_type',
+                'listings.price',
                 'listings.cover_media_path',
                 'users.username as creator_username',
             ])
@@ -809,6 +826,7 @@ class ListingController extends Controller
                 'title' => $row->title,
                 'listing_username' => $row->listing_username,
                 'listing_type' => $row->listing_type,
+                'price' => $row->price,
                 'cover_media_path' => $row->cover_media_path,
                 'cover_media_url' => $row->cover_media_path ? Storage::disk('public')->url($row->cover_media_path) : null,
                 'creator_username' => $row->creator_username,
@@ -816,17 +834,36 @@ class ListingController extends Controller
             ->values()
             ->all();
 
+        $languages = [];
+        $skills = [];
+
+        if ($user && $user->personalInfo) {
+            $rawLanguages = $user->personalInfo->languages ?? [];
+            $rawSkills = $user->personalInfo->skills ?? [];
+
+            $languages = is_array($rawLanguages)
+                ? array_values($rawLanguages)
+                : (json_decode((string) $rawLanguages, true) ?: []);
+
+            $skills = is_array($rawSkills)
+                ? array_values($rawSkills)
+                : (json_decode((string) $rawSkills, true) ?: []);
+        }
+        
         $creator = $user ? [
             'id' => $user->id,
             'username' => $user->username ?? null,
             'full_name' => $user->full_name ?? null,
-            'bio' => $user->bio ?? null,
-            'avatar_url' => ! empty($user->avatar_path)
-                ? Storage::disk('public')->url($user->avatar_path)
-                : (! empty($user->avatar_url) ? $user->avatar_url : null),
-            'title' => null,
-            'languages' => [],
-            'skills' => [],
+            'about' => $user->personalInfo->bio ?? $user->personalInfo->about ?? null,
+            'bio' => $user->personalInfo->bio ?? $user->personalInfo->about ?? null,
+            'avatar_url' => !empty($user->personalInfo->avatar_path)
+                ? Storage::disk('public')->url($user->personalInfo->avatar_path)
+                : (!empty($user->personalInfo->avatar_url) ? $user->personalInfo->avatar_url : null),
+            'languages' => $languages,
+            'skills' => $skills,
+            'member_since' => $user->created_at ?? null,
+            'created_at' => $user->created_at ?? null,
+            'title' => $user->personalInfo->title ?? null,
             'avg_response' => '1 hour',
         ] : null;
 
@@ -840,6 +877,7 @@ class ListingController extends Controller
             'status' => $listing->status,
             'category' => $listing->category,
             'sub_category' => $listing->sub_category,
+            'price' => $listing->price,
             'short_description' => $listing->short_description,
             'about' => $listing->about,
             'seller_mode' => $listing->seller_mode,
@@ -889,91 +927,15 @@ class ListingController extends Controller
                 'title',
                 'category',
                 'sub_category',
+                'price',
                 'short_description',
                 'cover_media_path',
                 'created_at',
                 'updated_at',
             ])
             ->map(function ($row) {
-                $price = null;
-                $priceLabel = null;
-
-                // WEBINAR PRICE
-                if ($row->listing_type === 'webinar' && Schema::hasTable('webinar_listing_details')) {
-                    $webinar = DB::table('webinar_listing_details')
-                        ->where('listing_id', $row->id)
-                        ->first(['ticket_price']);
-
-                    if ($webinar && $webinar->ticket_price !== null) {
-                        $price = (float) $webinar->ticket_price;
-                        $priceLabel = 'Ticket price';
-                    }
-                }
-
-                // DIGITAL PRODUCT PRICE = LOWEST PACKAGE PRICE
-                /* if ($row->listing_type === 'digital_product' && Schema::hasTable('digital_product_packages')) {
-                    $minPrice = DB::table('digital_product_packages')
-                        ->where('listing_id', $row->id)
-                        ->whereNotNull('price')
-                        ->min('price');
-
-                    if ($minPrice !== null) {
-                        $price = (float) $minPrice;
-                        $priceLabel = 'Starting at';
-                    }
-                } */
-
-                // COURSE PRICE
-                // Adjust this only if your course table stores the field under a different column name.
-                if ($row->listing_type === 'course' && Schema::hasTable('course_listing_details')) {
-                    $courseColumns = Schema::getColumnListing('course_listing_details');
-
-                    $coursePriceColumn = null;
-
-                    foreach (['price', 'course_price', 'starting_price'] as $candidate) {
-                        if (in_array($candidate, $courseColumns, true)) {
-                            $coursePriceColumn = $candidate;
-                            break;
-                        }
-                    }
-
-                    if ($coursePriceColumn) {
-                        $course = DB::table('course_listing_details')
-                            ->where('listing_id', $row->id)
-                            ->first([$coursePriceColumn]);
-
-                        if ($course && $course->{$coursePriceColumn} !== null && $course->{$coursePriceColumn} !== '') {
-                            $price = (float) $course->{$coursePriceColumn};
-                            $priceLabel = 'Price';
-                        }
-                    }
-                }
-
-                // SERVICE PRICE
-                // Adjust this only if your service table name/column differs.
-                if ($row->listing_type === 'service' && Schema::hasTable('service_listing_details')) {
-                    $serviceColumns = Schema::getColumnListing('service_listing_details');
-
-                    $servicePriceColumn = null;
-
-                    foreach (['price', 'starting_price', 'base_price', 'service_price'] as $candidate) {
-                        if (in_array($candidate, $serviceColumns, true)) {
-                            $servicePriceColumn = $candidate;
-                            break;
-                        }
-                    }
-
-                    if ($servicePriceColumn) {
-                        $service = DB::table('service_listing_details')
-                            ->where('listing_id', $row->id)
-                            ->first([$servicePriceColumn]);
-
-                        if ($service && $service->{$servicePriceColumn} !== null && $service->{$servicePriceColumn} !== '') {
-                            $price = (float) $service->{$servicePriceColumn};
-                            $priceLabel = $servicePriceColumn === 'starting_price' ? 'Starting at' : 'Price';
-                        }
-                    }
-                }
+                $price = $row->price !== null ? (float) $row->price : null;
+                $priceLabel = $price !== null ? 'Price' : null;
 
                 return [
                     'id' => $row->id,
@@ -1150,6 +1112,18 @@ class ListingController extends Controller
                 $newUsername = $this->makeUniqueUsername($validated['title'], $existing->id);
             }
 
+            $listingPrice = null;
+
+            if (($validated['listing_type'] ?? '') === 'digital_product') {
+                $listingPrice = data_get($validated, 'details.price');
+            } elseif (($validated['listing_type'] ?? '') === 'webinar') {
+                $listingPrice = data_get($validated, 'details.ticket_price');
+            } elseif (($validated['listing_type'] ?? '') === 'course') {
+                $listingPrice = data_get($validated, 'details.price');
+            } elseif (($validated['listing_type'] ?? '') === 'service') {
+                $listingPrice = data_get($validated, 'details.price');
+            }
+
             DB::table('listings')
                 ->where('id', $existing->id)
                 ->update([
@@ -1158,6 +1132,7 @@ class ListingController extends Controller
                     'username' => $newUsername,
                     'category' => $validated['category'] ?? null,
                     'sub_category' => $validated['sub_category'] ?? null,
+                    'price' => $listingPrice,
                     'short_description' => $validated['short_description'] ?? null,
                     'about' => $validated['about'] ?? null,
                     'seller_mode' => $validated['seller_mode'] ?? 'Solo',
