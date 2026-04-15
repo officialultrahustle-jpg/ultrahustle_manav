@@ -14,7 +14,7 @@ export default function Hero() {
             className="text-3xl font-poppins sm:text-5xl md:text-6xl 2xl:text-7xl font-semibold text-gray-500
         mx-auto leading-[1.2]"
           >
-            Chanchal <br />
+            One Home for <br />
             Your{" "}
             <span className="text-gray-500 underline decoration-lime-300">
               Whole{" "}
