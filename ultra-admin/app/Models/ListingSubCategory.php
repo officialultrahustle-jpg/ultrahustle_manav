@@ -19,14 +19,14 @@ class ListingSubCategory extends Model
         'is_active' => 'boolean',
     ];
 
-    public function listingType(): BelongsTo
+    public function listingType()
     {
-        return $this->belongsTo(ListingType::class);
+        return $this->belongsTo(\App\Models\ListingType::class, 'listing_type_id');
     }
 
-    public function category(): BelongsTo
+    public function category()
     {
-        return $this->belongsTo(ListingCategory::class, 'listing_category_id');
+        return $this->belongsTo(\App\Models\ListingCategory::class, 'listing_category_id');
     }
 
     public function productTypes(): HasMany

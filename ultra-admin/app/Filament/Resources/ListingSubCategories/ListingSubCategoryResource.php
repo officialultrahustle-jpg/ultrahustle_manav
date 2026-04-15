@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\ListingCategories;
+namespace App\Filament\Resources\ListingSubCategories;
 
-use App\Filament\Resources\ListingCategories\Pages\ManageListingCategories;
-use App\Models\ListingCategory;
+use App\Filament\Resources\ListingSubCategories\Pages\ManageListingSubCategories;
+use App\Models\ListingSubCategory;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
@@ -22,16 +22,18 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use UnitEnum;
 use App\Models\ListingType;
+use App\Models\ListingCategory;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Get;
 
-class ListingCategoryResource extends Resource
+class ListingSubCategoryResource extends Resource
 {
-    protected static ?string $model = ListingCategory::class;
+    protected static ?string $model = ListingSubCategory::class;
     protected static string | UnitEnum | null $navigationGroup = 'Taxonomy';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'Listing Category';
+    protected static ?string $recordTitleAttribute = 'Listing SubCategory';
 
     public static function form(Schema $schema): Schema
     {
@@ -47,7 +49,21 @@ class ListingCategoryResource extends Resource
                             ->pluck('name', 'id')
                     )
                     ->searchable()
-                    ->preload()
+                    ->live()
+                    ->afterStateUpdated(fn ($set) => $set('listing_category_id', null))
+                    ->required(),
+
+                Select::make('listing_category_id')
+                    ->label('Listing Category')
+                    ->options(fn (Get $get) =>
+                        ListingCategory::query()
+                            ->where('listing_type_id', $get('listing_type_id'))
+                            ->where('is_active', true)
+                            ->orderBy('sort_order')
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                    )
+                    ->searchable()
                     ->required(),
                 TextInput::make('name')
                     ->required(),
@@ -68,6 +84,9 @@ class ListingCategoryResource extends Resource
             ->components([
                 TextEntry::make('listingType.name')
                     ->label('Listing Type'),
+
+                TextEntry::make('category.name')
+                    ->label('Category'),
                 TextEntry::make('name'),
                 TextEntry::make('slug'),
                 IconEntry::make('is_active')
@@ -86,10 +105,15 @@ class ListingCategoryResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('Listing Category')
+            ->recordTitleAttribute('Listing SubCategory')
             ->columns([
                 TextColumn::make('listingType.name')
                     ->label('Listing Type')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('category.name')
+                    ->label('Category')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('name')
@@ -128,7 +152,7 @@ class ListingCategoryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ManageListingCategories::route('/'),
+            'index' => ManageListingSubCategories::route('/'),
         ];
     }
 }

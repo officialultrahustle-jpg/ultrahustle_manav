@@ -17,11 +17,6 @@ class ListingCategory extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
-/* 
-    public function listingType(): BelongsTo
-    {
-        return $this->belongsTo(ListingType::class);
-    } */
 
     public function subCategories(): HasMany
     {
@@ -34,7 +29,7 @@ class ListingCategory extends Model
     }
 
     public function listingType()
-{
-    return $this->belongsTo(\App\Models\ListingType::class, 'listing_type_id');
-}
+    {
+        return $this->belongsTo(\App\Models\ListingType::class, 'listing_type_id');
+    }
 }
