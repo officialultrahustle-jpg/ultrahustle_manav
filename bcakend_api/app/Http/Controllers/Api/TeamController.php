@@ -344,7 +344,7 @@ class TeamController extends Controller
         ])->save();
 
         return $this->successResponse('Member removed.', [
-            'membership' => $this->membershipPayload($member->fresh(['user:id,full_name,email'])),
+            'membership' => $this->membershipPayload($member->fresh(['user:id,username,full_name,email'])),
         ]);
     }
 
@@ -404,6 +404,7 @@ class TeamController extends Controller
             'teams' => $teams,
         ]);
     }
+
 
     public function toggleStatus(Request $request, Team $team): JsonResponse
     {

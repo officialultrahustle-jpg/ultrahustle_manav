@@ -1,42 +1,24 @@
 import React, { useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./CreateDigitalProduct.css";
 import UserNavbar from "../../../components/layout/UserNavbar";
 import Sidebar from "../../../components/layout/Sidebar";
 import MyPortfolio from "../../dashboard/components/UserProfile/MyPortfolio";
 import "../../../Darkuser.css";
 import "../../onboarding/components/OnboardingSelect.css";
+import { createListing, getListingDropdowns   } from "../api/listingApi";
+import Swal from "sweetalert2";
 
 export default function CreateDigitalProduct({ theme, setTheme }) {
+  
+  const LISTING_TYPE_SLUG = "digital-product";
+
+  const navigate = useNavigate();
   /* ================== CONSTANTS ================== */
-  const categories = useMemo(
-    () => ["Design", "Development", "Marketing", "Writing"],
-    [],
-  );
-
-  const subCategoriesMap = useMemo(
-    () => ({
-      Design: ["Logo Design", "UI/UX", "Branding"],
-      Development: ["Full Stack", "Frontend", "Backend"],
-      Marketing: ["SEO", "Social Media", "Ads"],
-      Writing: ["Copywriting", "Blog Writing", "Script Writing"],
-    }),
-    [],
-  );
-
-  const productTypes = useMemo(
-    () => [
-      "Digital Service",
-      "Consultation",
-      "One-time Project",
-      "Monthly Retainer",
-    ],
-    [],
-  );
-
-  const teamList = useMemo(
-    () => ["Ultra Hustle Studio", "Design Squad", "Dev Crew"],
-    [],
-  );
+  const [categories, setCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
+  const [productTypes, setProductTypes] = useState([]);
+  const [isMetaLoading, setIsMetaLoading] = useState(false);
 
   const deliveryFormats = useMemo(
     () => ["Google Drive Link", "Figma Link", "ZIP Download", "Notion Page"],
@@ -72,11 +54,86 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
     price: "",
   });
 
-  const subCategories = form.category
-    ? subCategoriesMap[form.category] || []
-    : [];
+  // const subCategories = form.category
+  //   ? subCategoriesMap[form.category] || []
+  //   : [];
 
   const setFormField = (key, value) => setForm((p) => ({ ...p, [key]: value }));
+
+  const mapOptions = (items = []) =>
+    Array.isArray(items)
+      ? items
+          .map((item) => {
+            if (typeof item === "string") return item;
+            return item?.name || item?.title || item?.value || "";
+          })
+          .filter(Boolean)
+      : [];
+
+  const loadCategories = async () => {
+    try {
+      setIsMetaLoading(true);
+      const res = await getListingDropdowns(LISTING_TYPE_SLUG, {
+        type: "categories",
+      });
+      setCategories(res?.categories || []);
+    } catch (error) {
+      console.error("Failed to load categories", error);
+      setCategories([]);
+    } finally {
+      setIsMetaLoading(false);
+    }
+  };
+
+  const loadSubCategories = async (categoryName) => {
+    if (!categoryName) {
+      setSubCategories([]);
+      return;
+    }
+
+    try {
+      const res = await getListingDropdowns(LISTING_TYPE_SLUG, {
+        type: "sub_categories",
+        category: categoryName,
+      });
+      setSubCategories(res?.sub_categories || []);
+    } catch (error) {
+      console.error("Failed to load sub categories", error);
+      setSubCategories([]);
+    }
+  };
+
+  const loadProductTypes = async (categoryName, subCategoryName) => {
+    if (!categoryName || !subCategoryName) {
+      setProductTypes([]);
+      return;
+    }
+
+    try {
+      const res = await getListingDropdowns(LISTING_TYPE_SLUG, {
+        type: "product_types",
+        category: categoryName,
+        sub_category: subCategoryName,
+      });
+      setProductTypes(res?.product_types || []);
+    } catch (error) {
+      console.error("Failed to load product types", error);
+      setProductTypes([]);
+    }
+  };
+
+
+  React.useEffect(() => {
+    loadCategories();
+  }, []);
+
+  React.useEffect(() => {
+    loadSubCategories(form.category);
+  }, [form.category]);
+
+  React.useEffect(() => {
+    loadProductTypes(form.category, form.subCategory);
+  }, [form.category, form.subCategory]);
 
   /* ================== TAGS STATE ================== */
   const [tagInput, setTagInput] = useState("");
@@ -103,8 +160,8 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
   };
 
   /* ================== SERVICE PROVIDER + PACKAGES STATE ================== */
-  const [mode, setMode] = useState("Solo"); // Solo | Team
-  const [teamName, setTeamName] = useState("");
+  // const [mode, setMode] = useState("Solo"); // Solo | Team
+  // const [teamName, setTeamName] = useState("");
   const [activeTab, setActiveTab] = useState("Basic");
   // ✅ Upload modal state (MISSING)
   const [uploadStep, setUploadStep] = useState(null); // null | "grid" | "success"
@@ -261,6 +318,9 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
 
   const [addOns, setAddOns] = useState([]);
   const [cover, setCover] = useState(null);
+  const [coverFile, setCoverFile] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [portfolioProjects, setPortfolioProjects] = useState([]);
 
   const [mainDeliverables, setMainDeliverables] = useState([]);
   const [notes, setNotes] = useState([""]);
@@ -293,6 +353,9 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setCoverFile(file);
+
     const reader = new FileReader();
     reader.onload = () => setCover(reader.result);
     reader.readAsDataURL(file);
@@ -319,6 +382,113 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
   const removeFaq = (idx) => {
     setFaqs((p) => p.filter((_, i) => i !== idx));
   };
+
+  const normalizePackages = () => {
+    return Object.fromEntries(
+      TABS.map((tab) => {
+        const item = pkg[tab] || {};
+
+        return [
+          tab,
+          {
+            price: item.price || (tab === "Basic" ? form.price : ""),
+            deliveryDays: item.deliveryDays || "",
+            revisions: item.revisions || "",
+            scope: item.scope || "",
+            included: Array.isArray(item.included) ? item.included.filter(Boolean) : [],
+            howItWorks: Array.isArray(item.howItWorks) ? item.howItWorks.filter(Boolean) : [],
+            notIncluded: Array.isArray(item.notIncluded) ? item.notIncluded.filter(Boolean) : [],
+            toolsUsed: Array.isArray(item.toolsUsed) ? item.toolsUsed.filter(Boolean) : [],
+            deliveryFormat: item.deliveryFormat || "",
+          },
+        ];
+      }),
+    );
+  };
+
+  const buildPayload = () => {
+    const activeData = pkg[activeTab] || {};
+
+    const allTools = Array.from(
+      new Set(
+        [
+          ...(pkg.Basic?.toolsUsed || []),
+          ...(pkg.Standard?.toolsUsed || []),
+          ...(pkg.Premium?.toolsUsed || []),
+        ]
+          .map((item) => String(item).trim())
+          .filter(Boolean),
+      ),
+    );
+
+    return {
+      listing_type: "digital_product",
+      status: "published",
+      title: form.title.trim(),
+      category: form.category || "",
+      sub_category: form.subCategory || "",
+      short_description: form.shortDescription || "",
+      about: form.about || "",
+      ai_powered: aiPowered,
+      cover_file: coverFile || null,
+      tags: tags.filter(Boolean),
+      faqs: faqs
+        .map((item) => ({
+          q: item.q?.trim() || "",
+          a: item.a?.trim() || "",
+        }))
+        .filter((item) => item.q || item.a),
+      links: links.map((item) => item.trim()).filter(Boolean),
+      deliverables: mainDeliverables.map((file, index) => ({
+        file,
+        notes: notes[index] || notes[0] || "",
+      })),
+      details: {
+        product_type: form.productType || "",
+        price: form.price || "",
+        included: (activeData.included || []).filter(Boolean),
+        delivery_format: activeData.deliveryFormat || "",
+        tools: allTools,
+      },
+      portfolio_projects: portfolioProjects,
+    };
+  };
+
+ const handleSubmit = async () => {
+  if (!form.title.trim()) {
+    Swal.fire({
+      icon: "warning",
+      title: "Title is required",
+      text: "Please enter the product title.",
+    });
+    return;
+  }
+
+  try {
+    setIsSaving(true);
+
+    const res = await createListing(buildPayload());
+
+    Swal.fire({
+      icon: "success",
+      title: "Saved",
+      text: res?.message || "Listing saved successfully",
+      confirmButtonText: "OK",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        navigate("/my-listings");
+      }
+    });
+  } catch (error) {
+    Swal.fire({
+      icon: "error",
+      title: "Save failed",
+      text: error?.message || "Something went wrong.",
+    });
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   /* ================== RENDER ================== */
   return (
@@ -433,7 +603,7 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
                             }))
                           }
                           options={categories}
-                          placeholder="Select category"
+                          placeholder={isMetaLoading ? "Loading categories..." : "Select category"}
                         />
                       </div>
                     </div>
@@ -452,7 +622,7 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
                             }))
                           }
                           options={subCategories}
-                          placeholder="Select sub category"
+                          placeholder={!form.category ? "Select category first" : "Select sub category"}
                           disabled={!form.category}
                         />
                       </div>
@@ -468,7 +638,7 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
                           value={form.productType}
                           onChange={(val) => setFormField("productType", val)}
                           options={productTypes}
-                          placeholder="eg., Digital Service"
+                          placeholder={!form.subCategory ? "Select sub category first" : "Select product type"}
                           disabled={!form.subCategory}
                         />
                       </div>
@@ -587,36 +757,34 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
                     )}
 
                     <div className="sp-field mt-4">
-                      <label className="sp-label">What's not included</label>
+                      <label className="sp-label">What's included</label>
                       <input
                         className="sp-input"
-                        value={notInput}
-                        onChange={(e) => setNotInput(e.target.value)}
-                        onKeyDown={(e) => onEnterAdd(e, addNot)}
-                        placeholder="eg., Printing"
+                        value={includedInput}
+                        onChange={(e) => setIncludedInput(e.target.value)}
+                        onKeyDown={(e) => onEnterAdd(e, addIncluded)}
+                        placeholder="eg., Source file"
                       />
                       <button
                         type="button"
                         className="sp-addMini"
-                        onClick={addNot}
+                        onClick={addIncluded}
                       >
                         + <span>Add</span>
                       </button>
 
-                      {!!current.notIncluded?.length && (
+                      {!!current.included?.length && (
                         <div
                           className="sp-chipRow"
                           style={{ position: "relative" }}
                         >
-                          {current.notIncluded.map((x, idx) => (
+                          {current.included.map((x, idx) => (
                             <div className="sp-chip" key={`${x}-${idx}`}>
                               {x}
                               <button
                                 className="sp-chipX"
                                 type="button"
-                                onClick={() =>
-                                  removeFromList("notIncluded", idx)
-                                }
+                                onClick={() => removeFromList("included", idx)}
                               >
                                 ×
                               </button>
@@ -629,7 +797,7 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
                                 ...p,
                                 [activeTab]: {
                                   ...p[activeTab],
-                                  notIncluded: [],
+                                  included: [],
                                 },
                               }))
                             }
@@ -680,7 +848,10 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
                     )}
                     <button
                       className="am-removeImg"
-                      onClick={() => setCover(null)}
+                      onClick={() => {
+                        setCover(null);
+                        setCoverFile(null);
+                      }}
                     >
                       ×
                     </button>
@@ -697,7 +868,12 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
 
                 {/* Portfolio Section */}
                 <div className="csl-portfolio-wrap">
-                  <MyPortfolio />
+                  <MyPortfolio
+                    mode="listing"
+                    listingType="digital_product"
+                    listingId={null}
+                    onChange={setPortfolioProjects}
+                  />
                 </div>
 
                 {/* ================= MAIN DELIVERABLES Section ================= */}
@@ -892,11 +1068,12 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
                 </div>
                 {/* ================= ACTIONS ================= */}
                 <div className="faq-actions">
-                  <button type="button" className="faq-draft">
-                    Save as Draft
+                  <button type="button" className="faq-draft" onClick={() => handleSubmit("draft")} disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Save as Draft"}
                   </button>
-                  <button type="button" className="faq-save">
-                    Save
+
+                  <button type="button" className="faq-save" onClick={() => handleSubmit("published")} disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Save"}
                   </button>
                 </div>
               </div>
@@ -919,6 +1096,7 @@ export default function CreateDigitalProduct({ theme, setTheme }) {
           onBack={() => setUploadStep(null)}
           onSelect={(files) => {
             if (files && files[0]) {
+              setCoverFile(files[0]);
               const reader = new FileReader();
               reader.onload = () => setCover(reader.result);
               reader.readAsDataURL(files[0]);

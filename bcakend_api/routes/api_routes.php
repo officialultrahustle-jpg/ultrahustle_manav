@@ -116,7 +116,10 @@ Route::middleware('auth:sanctum')->group(function () {
 // Public decline endpoint (token-only)
 Route::post('/v1/team-invites/{token}/decline', [\App\Http\Controllers\Api\TeamInviteController::class, 'decline']);
     Route::get('/v1/teams/username/{username}', [TeamController::class, 'showByUsername']);
-
+Route::middleware('auth:sanctum')->get(
+    '/v1/listing-dropdowns/{listingTypeSlug}',
+    [ListingController::class, 'getListingDropdowns']
+);
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::post('/teams', [TeamController::class, 'store']);
 	Route::get('/teams/check-username', [TeamController::class, 'checkUsername']);

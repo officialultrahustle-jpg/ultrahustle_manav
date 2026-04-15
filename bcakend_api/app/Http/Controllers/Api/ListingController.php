@@ -51,14 +51,26 @@ class ListingController extends Controller
 
             'details' => 'nullable|array',
             'details.product_type' => 'nullable|string|max:150',
+            'details.price' => 'nullable|numeric|min:0',
+            'details.included' => 'nullable|array',
+            'details.included.*' => 'nullable|string|max:255',
+            'details.delivery_format' => 'nullable|string|max:255',
 
-            'details.packages' => 'nullable|array',
-            'details.packages.*.package_name' => 'required_with:details.packages|string|in:Basic,Standard,Premium',
-            'details.packages.*.price' => 'nullable',
-            'details.packages.*.included' => 'nullable|array',
-            'details.packages.*.included.*' => 'nullable|string|max:255',
-            'details.packages.*.deliveryFormats' => 'nullable|array',
-            'details.packages.*.deliveryFormats.*' => 'nullable|string|max:255',
+            'portfolio_projects' => 'nullable|array',
+            'portfolio_projects.*.title' => 'nullable|string|max:255',
+            'portfolio_projects.*.description' => 'nullable|string',
+            'portfolio_projects.*.cost' => 'nullable|string|max:100',
+            'portfolio_projects.*.sort_order' => 'nullable|integer|min:0',
+            'portfolio_projects.*.files' => 'nullable|array',
+            'portfolio_projects.*.files.*' => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,mov,avi,mkv,webm|max:20480',
+
+            // 'details.packages' => 'nullable|array',
+            // 'details.packages.*.package_name' => 'required_with:details.packages|string|in:Basic,Standard,Premium',
+            // 'details.packages.*.price' => 'nullable',
+            // 'details.packages.*.included' => 'nullable|array',
+            // 'details.packages.*.included.*' => 'nullable|string|max:255',
+            // 'details.packages.*.deliveryFormats' => 'nullable|array',
+            // 'details.packages.*.deliveryFormats.*' => 'nullable|string|max:255',
             'details.course_level' => 'nullable|string|max:100',
 
             'details.learning_points' => 'nullable|array',
@@ -200,64 +212,21 @@ class ListingController extends Controller
             }
 
             if (($validated['listing_type'] ?? '') === 'digital_product') {
+                $included = array_values(array_filter(array_map(
+                    fn ($v) => trim((string) $v),
+                    data_get($validated, 'details.included', [])
+                )));
+
                 if (Schema::hasTable('digital_product_details')) {
                     DB::table('digital_product_details')->insert([
                         'listing_id' => $listingId,
                         'product_type' => data_get($validated, 'details.product_type'),
+                        'price' => data_get($validated, 'details.price'),
+                        'included_json' => !empty($included) ? json_encode($included) : null,
+                        'delivery_format' => data_get($validated, 'details.delivery_format'),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                }
-
-                foreach ((data_get($validated, 'details.packages') ?? []) as $package) {
-                    $price = $package['price'] ?? null;
-
-                    $included = array_values(array_filter(array_map(
-                        fn($v) => trim((string) $v),
-                        $package['included'] ?? []
-                    )));
-
-                    $deliveryFormats = array_values(array_filter(array_map(
-                        fn($v) => trim((string) $v),
-                        $package['deliveryFormats'] ?? []
-                    )));
-
-                    $hasData =
-                        ($price !== null && $price !== '') ||
-                        !empty($included) ||
-                        !empty($deliveryFormats);
-
-                    if (!$hasData) {
-                        continue;
-                    }
-
-                    $packageId = DB::table('digital_product_packages')->insertGetId([
-                        'listing_id' => $listingId,
-                        'package_name' => $package['package_name'],
-                        'price' => ($price !== '' && $price !== null) ? $price : null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-
-                    if (!empty($included)) {
-                        DB::table('digital_product_package_items')->insert([
-                            'package_id' => $packageId,
-                            'item_type' => 'included',
-                            'item_value_json' => json_encode($included),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-
-                    if (!empty($deliveryFormats)) {
-                        DB::table('digital_product_package_items')->insert([
-                            'package_id' => $packageId,
-                            'item_type' => 'delivery_format',
-                            'item_value_json' => json_encode($deliveryFormats),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
                 }
             }
             //course specific data
@@ -393,6 +362,77 @@ class ListingController extends Controller
                 }
             }
 
+            $portfolioProjects = $request->input('portfolio_projects', []);
+
+            $hasPortfolioData = false;
+            foreach ($portfolioProjects as $projectIndex => $projectInput) {
+                $title = trim((string) ($projectInput['title'] ?? ''));
+                $description = trim((string) ($projectInput['description'] ?? ''));
+                $cost = trim((string) ($projectInput['cost'] ?? ''));
+                $files = $request->file("portfolio_projects.$projectIndex.files", []);
+
+                if ($title !== '' || $description !== '' || $cost !== '' || !empty($files)) {
+                    $hasPortfolioData = true;
+                    break;
+                }
+            }
+
+            if (
+                $hasPortfolioData &&
+                Schema::hasTable('portfolios') &&
+                Schema::hasTable('portfolio_projects')
+            ) {
+                $portfolioId = DB::table('portfolios')->insertGetId([
+                    'owner_type' => 'listing',
+                    'owner_id' => $listingId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                foreach ($portfolioProjects as $projectIndex => $projectInput) {
+                    $title = trim((string) ($projectInput['title'] ?? ''));
+                    $description = trim((string) ($projectInput['description'] ?? ''));
+                    $cost = trim((string) ($projectInput['cost'] ?? ''));
+                    $sortOrder = isset($projectInput['sort_order']) ? (int) $projectInput['sort_order'] : $projectIndex;
+                    $files = $request->file("portfolio_projects.$projectIndex.files", []);
+
+                    if ($title === '' && $description === '' && $cost === '' && empty($files)) {
+                        continue;
+                    }
+
+                    $projectId = DB::table('portfolio_projects')->insertGetId([
+                        'portfolio_id' => $portfolioId,
+                        'title' => $title ?: null,
+                        'description' => $description ?: null,
+                        'cost_cents' => $cost !== '' ? (int) $cost : null,
+                        'sort_order' => $sortOrder,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    if (Schema::hasTable('portfolio_media') && !empty($files)) {
+                        foreach ($files as $mediaIndex => $mediaFile) {
+                            if (!$mediaFile) {
+                                continue;
+                            }
+
+                            $mediaPath = $mediaFile->store('portfolio/media', 'public');
+                            $mime = $mediaFile->getMimeType();
+                            $type = str_starts_with((string) $mime, 'video/') ? 'video' : 'image';
+
+                            DB::table('portfolio_media')->insert([
+                                'project_id' => $projectId,
+                                'path' => $mediaPath,
+                                'type' => $type,
+                                'sort_order' => $mediaIndex,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+
             return DB::table('listings')->where('id', $listingId)->first();
         });
 
@@ -523,8 +563,8 @@ class ListingController extends Controller
         $details = [];
         $tags = [];
         $tools = [];
-        $packagesForResponse = [];
-        $deliveryFormatsForResponse = [];
+        // $packagesForResponse = [];
+        // $deliveryFormatsForResponse = [];
 
         if (! empty($listing->tags_json)) {
             $decodedTags = json_decode($listing->tags_json, true);
@@ -553,61 +593,13 @@ class ListingController extends Controller
             }
 
             if ($productDetails) {
+                $included = json_decode($productDetails->included_json ?? '[]', true);
+
                 $details['product_type'] = $productDetails->product_type;
+                $details['price'] = $productDetails->price;
+                $details['included'] = is_array($included) ? array_values($included) : [];
+                $details['delivery_format'] = $productDetails->delivery_format;
             }
-
-            $packages = [];
-
-            if (Schema::hasTable('digital_product_packages')) {
-                $packageRows = DB::table('digital_product_packages')
-                    ->where('listing_id', $listingId)
-                    ->orderBy('id')
-                    ->get();
-
-                foreach ($packageRows as $packageRow) {
-                    $included = [];
-                    $deliveryFormats = [];
-
-                    if (Schema::hasTable('digital_product_package_items')) {
-                        $items = DB::table('digital_product_package_items')
-                            ->where('package_id', $packageRow->id)
-                            ->get();
-
-                        foreach ($items as $item) {
-                            $values = json_decode($item->item_value_json ?? '[]', true);
-                            $values = is_array($values) ? array_values($values) : [];
-
-                            if ($item->item_type === 'included') {
-                                $included = $values;
-                            }
-
-                            if ($item->item_type === 'delivery_format') {
-                                $deliveryFormats = $values;
-                            }
-                        }
-                    }
-
-                    $packagePayload = [
-                        'package_name' => $packageRow->package_name,
-                        'price' => $packageRow->price,
-                        'description' => $packageRow->description ?? '',
-                        'included' => $included,
-                        'deliveryFormats' => $deliveryFormats,
-                        'delivery_formats' => $deliveryFormats,
-                    ];
-
-                    $packages[$packageRow->package_name] = $packagePayload;
-                    $packagesForResponse[] = $packagePayload;
-
-                    foreach ($deliveryFormats as $fmt) {
-                        if (! in_array($fmt, $deliveryFormatsForResponse, true)) {
-                            $deliveryFormatsForResponse[] = $fmt;
-                        }
-                    }
-                }
-            }
-
-            $details['packages'] = $packages;
         }
 
         // =========================
@@ -861,8 +853,8 @@ class ListingController extends Controller
             'deliverables' => $deliverables,
             'details' => $details,
             'tools' => $tools,
-            'delivery_formats' => $deliveryFormatsForResponse,
-            'packages' => $packagesForResponse,
+            // 'delivery_formats' => $deliveryFormatsForResponse,
+            // 'packages' => $packagesForResponse,
             'creator' => $creator,
             'portfolio_projects' => $portfolioProjects,
             'recommended_listings' => $recommendedListings,
@@ -1090,14 +1082,18 @@ class ListingController extends Controller
 
             'details' => 'nullable|array',
             'details.product_type' => 'nullable|string|max:150',
+            'details.price' => 'nullable|numeric|min:0',
+            'details.included' => 'nullable|array',
+            'details.included.*' => 'nullable|string|max:255',
+            'details.delivery_format' => 'nullable|string|max:255',
 
-            'details.packages' => 'nullable|array',
-            'details.packages.*.package_name' => 'required_with:details.packages|string|in:Basic,Standard,Premium',
-            'details.packages.*.price' => 'nullable',
-            'details.packages.*.included' => 'nullable|array',
-            'details.packages.*.included.*' => 'nullable|string|max:255',
-            'details.packages.*.deliveryFormats' => 'nullable|array',
-            'details.packages.*.deliveryFormats.*' => 'nullable|string|max:255',
+            // 'details.packages' => 'nullable|array',
+            // 'details.packages.*.package_name' => 'required_with:details.packages|string|in:Basic,Standard,Premium',
+            // 'details.packages.*.price' => 'nullable',
+            // 'details.packages.*.included' => 'nullable|array',
+            // 'details.packages.*.included.*' => 'nullable|string|max:255',
+            // 'details.packages.*.deliveryFormats' => 'nullable|array',
+            // 'details.packages.*.deliveryFormats.*' => 'nullable|string|max:255',
             'details.course_level' => 'nullable|string|max:100',
 
             'details.learning_points' => 'nullable|array',
@@ -1266,64 +1262,25 @@ class ListingController extends Controller
             }
 
             if (($validated['listing_type'] ?? '') === 'digital_product') {
+                $included = array_values(array_filter(array_map(
+                    fn ($v) => trim((string) $v),
+                    data_get($validated, 'details.included', [])
+                )));
+
                 if (Schema::hasTable('digital_product_details')) {
+                    DB::table('digital_product_details')
+                        ->where('listing_id', $existing->id)
+                        ->delete();
+
                     DB::table('digital_product_details')->insert([
                         'listing_id' => $existing->id,
                         'product_type' => data_get($validated, 'details.product_type'),
+                        'price' => data_get($validated, 'details.price'),
+                        'included_json' => !empty($included) ? json_encode($included) : null,
+                        'delivery_format' => data_get($validated, 'details.delivery_format'),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                }
-
-                foreach ((data_get($validated, 'details.packages') ?? []) as $package) {
-                    $price = $package['price'] ?? null;
-
-                    $included = array_values(array_filter(array_map(
-                        fn($v) => trim((string) $v),
-                        $package['included'] ?? []
-                    )));
-
-                    $deliveryFormats = array_values(array_filter(array_map(
-                        fn($v) => trim((string) $v),
-                        $package['deliveryFormats'] ?? []
-                    )));
-
-                    $hasData =
-                        ($price !== null && $price !== '') ||
-                        !empty($included) ||
-                        !empty($deliveryFormats);
-
-                    if (!$hasData) {
-                        continue;
-                    }
-
-                    $packageId = DB::table('digital_product_packages')->insertGetId([
-                        'listing_id' => $existing->id,
-                        'package_name' => $package['package_name'],
-                        'price' => ($price !== '' && $price !== null) ? $price : null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-
-                    if (!empty($included)) {
-                        DB::table('digital_product_package_items')->insert([
-                            'package_id' => $packageId,
-                            'item_type' => 'included',
-                            'item_value_json' => json_encode($included),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-
-                    if (!empty($deliveryFormats)) {
-                        DB::table('digital_product_package_items')->insert([
-                            'package_id' => $packageId,
-                            'item_type' => 'delivery_format',
-                            'item_value_json' => json_encode($deliveryFormats),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
                 }
             }
 
@@ -1553,4 +1510,140 @@ class ListingController extends Controller
             'languages' => $languages,
         ]);
     }
+    
+    public function getListingDropdowns(Request $request, string $listingTypeSlug): JsonResponse
+{
+    $type = trim((string) $request->query('type', ''));
+    $category = trim((string) $request->query('category', ''));
+    $subCategory = trim((string) $request->query('sub_category', ''));
+
+    try {
+        $listingType = DB::table('listing_types')
+            ->where('slug', $listingTypeSlug)
+            ->where('is_active', 1)
+            ->first();
+
+        if (!$listingType) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Listing type not found.',
+            ], 404);
+        }
+
+        if ($type === 'categories') {
+            $categories = DB::table('listing_categories')
+                ->where('listing_type_id', $listingType->id)
+                ->where('is_active', 1)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->pluck('name')
+                ->filter(fn ($item) => filled($item))
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'categories' => $categories,
+            ]);
+        }
+
+        if ($type === 'sub_categories') {
+            if ($category === '') {
+                return response()->json([
+                    'success' => true,
+                    'sub_categories' => [],
+                ]);
+            }
+
+            $categoryRow = DB::table('listing_categories')
+                ->where('listing_type_id', $listingType->id)
+                ->where('name', $category)
+                ->where('is_active', 1)
+                ->first();
+
+            if (!$categoryRow) {
+                return response()->json([
+                    'success' => true,
+                    'sub_categories' => [],
+                ]);
+            }
+
+            $subCategories = DB::table('listing_sub_categories')
+                ->where('listing_type_id', $listingType->id)
+                ->where('listing_category_id', $categoryRow->id)
+                ->where('is_active', 1)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->pluck('name')
+                ->filter(fn ($item) => filled($item))
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'sub_categories' => $subCategories,
+            ]);
+        }
+
+        if ($type === 'product_types') {
+            if ($category === '' || $subCategory === '') {
+                return response()->json([
+                    'success' => true,
+                    'product_types' => [],
+                ]);
+            }
+
+            $categoryRow = DB::table('listing_categories')
+                ->where('listing_type_id', $listingType->id)
+                ->where('name', $category)
+                ->where('is_active', 1)
+                ->first();
+
+            if (!$categoryRow) {
+                return response()->json([
+                    'success' => true,
+                    'product_types' => [],
+                ]);
+            }
+
+            $subCategoryRow = DB::table('listing_sub_categories')
+                ->where('listing_type_id', $listingType->id)
+                ->where('listing_category_id', $categoryRow->id)
+                ->where('name', $subCategory)
+                ->where('is_active', 1)
+                ->first();
+
+            if (!$subCategoryRow) {
+                return response()->json([
+                    'success' => true,
+                    'product_types' => [],
+                ]);
+            }
+
+            $productTypes = DB::table('listing_product_types')
+                ->where('listing_type_id', $listingType->id)
+                ->where('listing_category_id', $categoryRow->id)
+                ->where('listing_sub_category_id', $subCategoryRow->id)
+                ->where('is_active', 1)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->pluck('name')
+                ->filter(fn ($item) => filled($item))
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'product_types' => $productTypes,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid dropdown type.',
+        ], 422);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => $e->getMessage(),
+        ], 500);
+    }
+}
 }
