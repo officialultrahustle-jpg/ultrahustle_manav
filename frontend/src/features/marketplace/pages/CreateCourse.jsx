@@ -353,8 +353,6 @@ export default function CreateCourse({
                       preview: lesson.media_url,
                       file: null,
                       type: lesson.media_type || null,
-                      existing_url: lesson.media_url || "",
-                      existing_path: lesson.media_path || "",
                     }
                   : null,
               }))
@@ -434,8 +432,6 @@ export default function CreateCourse({
           description: lesson.description,
           media_file: lesson.media?.file || null,
           media_type: lesson.media?.type || null,
-          existing_media_url: lesson.media?.file ? "" : lesson.media?.existing_url || "",
-          existing_media_path: lesson.media?.file ? "" : lesson.media?.existing_path || "",
         })),
     },
   });
@@ -910,7 +906,6 @@ export default function CreateCourse({
                   <div className="csl-group-box">
                     <PreviewVideo
                       previewImage={previewVideo || undefined}
-                      previewType="video"
                       onUpload={() => {
                         const input = document.createElement("input");
                         input.type = "file";
