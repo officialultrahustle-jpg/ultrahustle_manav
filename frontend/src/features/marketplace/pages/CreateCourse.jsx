@@ -235,6 +235,7 @@ export default function CreateCourse({
     input.click();
   };
 
+  
   const handleCoverFileSelect = (file) => {
     if (!file) return;
     setCoverFile(file);
