@@ -255,6 +255,14 @@ class ListingController extends Controller
                     data_get($validated, 'details.languages', [])
                 )));
 
+                $includedRaw = data_get($validated, 'details.included', []);
+                $included = is_array($includedRaw)
+                    ? array_values(array_filter(array_map(
+                        fn($v) => trim((string) $v),
+                        $includedRaw
+                    ), fn($v) => $v !== ''))
+                    : [];
+
                 $previewVideo = $request->file('details.preview_video_file');
 
                 $previewVideoPath = null;
@@ -272,6 +280,8 @@ class ListingController extends Controller
                 DB::table('course_listing_details')->insert([
                     'listing_id' => $listingId,
                     'course_level' => data_get($validated, 'details.course_level'),
+                    'product_type' => data_get($validated, 'details.product_type'),
+                    'included_json' => json_encode($included),
                     'learning_points_json' => !empty($learningPoints) ? json_encode($learningPoints) : null,
                     'languages_json' => !empty($languages) ? json_encode($languages) : null,
                     'preview_video_path' => $previewVideoPath,
@@ -631,8 +641,11 @@ class ListingController extends Controller
             if ($courseDetails) {
                 $learningPoints = json_decode($courseDetails->learning_points_json ?? '[]', true);
                 $languages = json_decode($courseDetails->languages_json ?? '[]', true);
+                $included = json_decode($courseDetails->included_json ?? '[]', true);
 
                 $details['course_level'] = $courseDetails->course_level;
+                $details['product_type'] = $courseDetails->product_type ?? null;
+                $details['included'] = is_array($included) ? array_values($included) : [];
                 $details['learning_points'] = is_array($learningPoints) ? array_values($learningPoints) : [];
                 $details['languages'] = is_array($languages) ? array_values($languages) : [];
                 $details['preview_video_path'] = $courseDetails->preview_video_path;
@@ -1073,6 +1086,9 @@ class ListingController extends Controller
             'details.lessons.*.media_file' => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,mov,avi,mkv,webm|max:20480',
             'details.lessons.*.media_type' => 'nullable|in:image,video',
 
+            'details.lessons.*.existing_media_url' => 'nullable|string',
+            'details.lessons.*.existing_media_path' => 'nullable|string',
+
             'details.webinar_level' => 'nullable|string|max:100',
             'details.ticket_price' => 'nullable|numeric|min:0',
             'details.schedule_date' => 'nullable|date',
@@ -1278,6 +1294,14 @@ class ListingController extends Controller
                     data_get($validated, 'details.languages', [])
                 )));
 
+                $includedRaw = data_get($validated, 'details.included', []);
+                $included = is_array($includedRaw)
+                    ? array_values(array_filter(array_map(
+                        fn($v) => trim((string) $v),
+                        $includedRaw
+                    ), fn($v) => $v !== ''))
+                    : [];
+
                 $previewVideo = $request->file('details.preview_video_file');
 
                 $previewVideoPath = null;
@@ -1295,6 +1319,8 @@ class ListingController extends Controller
                 DB::table('course_listing_details')->insert([
                     'listing_id' => $existing->id,
                     'course_level' => data_get($validated, 'details.course_level'),
+                    'product_type' => data_get($validated, 'details.product_type'),
+                    'included_json' => json_encode($included),
                     'learning_points_json' => !empty($learningPoints) ? json_encode($learningPoints) : null,
                     'languages_json' => !empty($languages) ? json_encode($languages) : null,
                     'preview_video_path' => $previewVideoPath,
@@ -1311,25 +1337,38 @@ class ListingController extends Controller
                     $mediaType = $lesson['media_type'] ?? null;
 
                     $mediaFile = $request->file("details.lessons.$index.media_file");
+                    $existingMediaPath = trim((string) ($lesson['existing_media_path'] ?? ''));
+                    $existingMediaUrl = trim((string) ($lesson['existing_media_url'] ?? ''));
 
-                    if ($title === '' && $description === '' && !$mediaFile) {
+                    if ($title === '' && $description === '' && !$mediaFile && $existingMediaPath === '' && $existingMediaUrl === '') {
                         continue;
                     }
 
-                    $mediaPath = null;
+                    $mediaPath = $existingMediaPath ?: null;
                     $mediaName = null;
                     $mediaMime = null;
                     $mediaSize = null;
 
                     if ($mediaFile) {
-                        $mediaPath = $mediaFile->store('listings/course/lessons', 'public');
                         $mediaName = $mediaFile->getClientOriginalName();
                         $mediaMime = $mediaFile->getMimeType();
                         $mediaSize = $mediaFile->getSize();
 
+                        $isVideo = str_starts_with((string) $mediaMime, 'video/');
+                        $mediaFolder = $isVideo
+                            ? 'listings/course/lessons/videos'
+                            : 'listings/course/lessons/images';
+
+                        $mediaPath = $mediaFile->store($mediaFolder, 'public');
+
                         if (!$mediaType) {
-                            $mediaType = str_starts_with((string) $mediaMime, 'video/') ? 'video' : 'image';
+                            $mediaType = $isVideo ? 'video' : 'image';
                         }
+                    } elseif ($mediaPath && !$mediaType) {
+                        $ext = strtolower(pathinfo($mediaPath, PATHINFO_EXTENSION));
+                        $mediaType = in_array($ext, ['mp4', 'mov', 'avi', 'mkv', 'webm', 'ogg'], true)
+                            ? 'video'
+                            : 'image';
                     }
 
                     DB::table('course_listing_lessons')->insert([

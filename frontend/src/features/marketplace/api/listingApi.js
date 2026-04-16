@@ -176,6 +176,14 @@ export const createListing = async (payload) => {
       formData.append(`details[lessons][${index}][title]`, lesson.title || "");
       formData.append(`details[lessons][${index}][description]`, lesson.description || "");
       formData.append(`details[lessons][${index}][media_type]`, lesson.media_type || "");
+      formData.append(
+        `details[lessons][${index}][existing_media_url]`,
+        lesson.existing_media_url || ""
+      );
+      formData.append(
+        `details[lessons][${index}][existing_media_path]`,
+        lesson.existing_media_path || ""
+      );
 
       if (lesson.media_file) {
         formData.append(`details[lessons][${index}][media_file]`, lesson.media_file);
@@ -306,20 +314,19 @@ export const updateListing = async (username, payload) => {
 
     (details.lessons || []).forEach((lesson, index) => {
       formData.append(`details[lessons][${index}][title]`, lesson.title || "");
+      formData.append(`details[lessons][${index}][description]`, lesson.description || "");
+      formData.append(`details[lessons][${index}][media_type]`, lesson.media_type || "");
       formData.append(
-        `details[lessons][${index}][description]`,
-        lesson.description || ""
+        `details[lessons][${index}][existing_media_url]`,
+        lesson.existing_media_url || ""
       );
       formData.append(
-        `details[lessons][${index}][media_type]`,
-        lesson.media_type || ""
+        `details[lessons][${index}][existing_media_path]`,
+        lesson.existing_media_path || ""
       );
 
       if (lesson.media_file) {
-        formData.append(
-          `details[lessons][${index}][media_file]`,
-          lesson.media_file
-        );
+        formData.append(`details[lessons][${index}][media_file]`, lesson.media_file);
       }
     });
 
