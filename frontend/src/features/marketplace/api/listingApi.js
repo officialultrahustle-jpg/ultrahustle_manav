@@ -162,6 +162,10 @@ export const createListing = async (payload) => {
       formData.append(`details[languages][${index}]`, language);
     });
 
+    (details.key_outcomes || []).forEach((key_outcome, index) => {
+      formData.append(`details[key_outcomes][${index}]`, key_outcome);
+    });
+
     if (details.preview_video_file) {
       formData.append("details[preview_video_file]", details.preview_video_file);
     }
@@ -334,6 +338,10 @@ export const updateListing = async (username, payload) => {
     if (details.webinar_level) {
       formData.append("details[webinar_level]", details.webinar_level);
     }
+
+    (details.key_outcomes || []).forEach((item, index) => {
+      formData.append(`details[key_outcomes][${index}]`, item);
+    });
 
     if (
       details.ticket_price !== undefined &&

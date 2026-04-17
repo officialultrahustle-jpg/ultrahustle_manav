@@ -80,6 +80,9 @@ class ListingController extends Controller
             'details.languages' => 'nullable|array',
             'details.languages.*' => 'nullable|string|max:100',
 
+            'details.key_outcomes' => 'nullable|array',
+            'details.key_outcomes.*' => 'nullable|string|max:100',
+
             'details.preview_video_file' => 'nullable|file|mimes:mp4,mov,avi,mkv,webm|max:51200',
 
             'details.lessons' => 'nullable|array',
@@ -88,7 +91,7 @@ class ListingController extends Controller
             'details.lessons.*.media_file' => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,mov,avi,mkv,webm|max:20480',
             'details.lessons.*.media_type' => 'nullable|in:image,video',
 
-            'details.webinar_level' => 'nullable|string|max:100',
+            // 'details.webinar_level' => 'nullable|string|max:100',
             'details.schedule_date' => 'nullable|date',
             'details.schedule_start_time' => 'nullable',
             'details.schedule_duration' => 'nullable|integer|min:1',
@@ -346,11 +349,17 @@ class ListingController extends Controller
                     data_get($validated, 'details.languages', [])
                 )));
 
+                $key_outcomes = array_values(array_filter(array_map(
+                    fn($v) => trim((string) $v),
+                    data_get($validated, 'details.key_outcomes', [])
+                )));
+
                 if (Schema::hasTable('webinar_listing_details')) {
                     DB::table('webinar_listing_details')->insert([
                         'listing_id' => $listingId,
                         'ticket_price' => data_get($validated, 'details.ticket_price'),
-                        'webinar_level' => data_get($validated, 'details.webinar_level'),
+                        // 'webinar_level' => data_get($validated, 'details.webinar_level'),
+                        'product_type' => data_get($validated, 'details.product_type'),
                         'schedule_date' => data_get($validated, 'details.schedule_date'),
                         'schedule_start_time' => data_get($validated, 'details.schedule_start_time'),
                         'schedule_duration' => data_get($validated, 'details.schedule_duration'),
@@ -358,6 +367,7 @@ class ListingController extends Controller
                         'webinar_link' => data_get($validated, 'details.webinar_link'),
                         'learning_points_json' => !empty($learningPoints) ? json_encode($learningPoints) : null,
                         'languages_json' => !empty($languages) ? json_encode($languages) : null,
+                        'key_outcomes' => !empty($key_outcomes) ? json_encode($key_outcomes) : null,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -697,8 +707,9 @@ class ListingController extends Controller
             if ($webinarDetails) {
                 $learningPoints = json_decode($webinarDetails->learning_points_json ?? '[]', true);
                 $languages = json_decode($webinarDetails->languages_json ?? '[]', true);
+                $keyOutcomes = json_decode($webinarDetails->key_outcomes ?? '[]', true);
 
-                $details['webinar_level'] = $webinarDetails->webinar_level;
+                $details['product_type'] = $webinarDetails->product_type ?? null;
                 $details['schedule_date'] = $webinarDetails->schedule_date;
                 $details['schedule_start_time'] = $webinarDetails->schedule_start_time;
                 $details['schedule_duration'] = $webinarDetails->schedule_duration;
@@ -706,6 +717,7 @@ class ListingController extends Controller
                 $details['webinar_link'] = $webinarDetails->webinar_link;
                 $details['learning_points'] = is_array($learningPoints) ? array_values($learningPoints) : [];
                 $details['languages'] = is_array($languages) ? array_values($languages) : [];
+                $details['key_outcomes'] = is_array($keyOutcomes) ? array_values($keyOutcomes) : [];
                 $details['ticket_price'] = $webinarDetails->ticket_price;
             }
 
@@ -1078,6 +1090,9 @@ class ListingController extends Controller
             'details.languages' => 'nullable|array',
             'details.languages.*' => 'nullable|string|max:100',
 
+            'details.key_outcomes' => 'nullable|array',
+            'details.key_outcomes.*' => 'nullable|string|max:100',
+
             'details.preview_video_file' => 'nullable|file|mimes:mp4,mov,avi,mkv,webm|max:51200',
 
             'details.lessons' => 'nullable|array',
@@ -1089,7 +1104,7 @@ class ListingController extends Controller
             'details.lessons.*.existing_media_url' => 'nullable|string',
             'details.lessons.*.existing_media_path' => 'nullable|string',
 
-            'details.webinar_level' => 'nullable|string|max:100',
+            // 'details.webinar_level' => 'nullable|string|max:100',
             'details.ticket_price' => 'nullable|numeric|min:0',
             'details.schedule_date' => 'nullable|date',
             'details.schedule_start_time' => 'nullable',
@@ -1398,11 +1413,17 @@ class ListingController extends Controller
                     data_get($validated, 'details.languages', [])
                 )));
 
+                $key_outcomes = array_values(array_filter(array_map(
+                    fn($v) => trim((string) $v),
+                    data_get($validated, 'details.key_outcomes', [])
+                )));
+
                 if (Schema::hasTable('webinar_listing_details')) {
                     DB::table('webinar_listing_details')->insert([
                         'listing_id' => $existing->id,
                         'ticket_price' => data_get($validated, 'details.ticket_price'),
-                        'webinar_level' => data_get($validated, 'details.webinar_level'),
+                        // 'webinar_level' => data_get($validated, 'details.webinar_level'),
+                        'product_type' => data_get($validated, 'details.product_type'),
                         'schedule_date' => data_get($validated, 'details.schedule_date'),
                         'schedule_start_time' => data_get($validated, 'details.schedule_start_time'),
                         'schedule_duration' => data_get($validated, 'details.schedule_duration'),
@@ -1410,6 +1431,7 @@ class ListingController extends Controller
                         'webinar_link' => data_get($validated, 'details.webinar_link'),
                         'learning_points_json' => !empty($learningPoints) ? json_encode($learningPoints) : null,
                         'languages_json' => !empty($languages) ? json_encode($languages) : null,
+                        'key_outcomes' => !empty($key_outcomes) ? json_encode($key_outcomes) : null,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);

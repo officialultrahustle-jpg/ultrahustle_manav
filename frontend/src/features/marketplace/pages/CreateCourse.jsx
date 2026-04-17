@@ -77,7 +77,8 @@ export default function CreateCourse({
     { title: "", description: "", media: null },
     { title: "", description: "", media: null },
   ]);
-
+  const [existingCoverUrl, setExistingCoverUrl] = useState("");
+  const [existingPreviewVideoUrl, setExistingPreviewVideoUrl] = useState("");
   const [cover, setCover] = useState(null);
   const [coverFile, setCoverFile] = useState(null);
 
@@ -225,6 +226,8 @@ export default function CreateCourse({
       reader.onload = () => {
         updateLesson(idx, "media", {
           preview: reader.result,
+          existing_url: "",
+          existing_path: "",
           file,
           type: file.type?.startsWith("video/") ? "video" : "image",
         });
@@ -235,7 +238,7 @@ export default function CreateCourse({
     input.click();
   };
 
-  
+
   const handleCoverFileSelect = (file) => {
     if (!file) return;
     setCoverFile(file);
@@ -352,6 +355,8 @@ export default function CreateCourse({
                 media: lesson.media_url
                   ? {
                       preview: lesson.media_url,
+                      existing_url: lesson.media_url,
+                      existing_path: lesson.media_path || "",
                       file: null,
                       type: lesson.media_type || null,
                     }
@@ -365,11 +370,14 @@ export default function CreateCourse({
         );
 
         if (item.cover_media_url || item.cover_media_path) {
-          setCover(item.cover_media_url || item.cover_media_path);
+          const coverUrl = item.cover_media_url || item.cover_media_path;
+          setCover(coverUrl);
+          setExistingCoverUrl(coverUrl);
         }
 
         if (item?.details?.preview_video_url) {
           setPreviewVideo(item.details.preview_video_url);
+          setExistingPreviewVideoUrl(item.details.preview_video_url);
         }
       } catch (e) {
         Swal.fire({
@@ -396,46 +404,69 @@ export default function CreateCourse({
   };
 
   const buildPayload = () => ({
-    listing_type: LISTING_TYPE,
-    status: "published",
-    title: form.title,
-    category: form.category,
-    sub_category: form.subCategory,
-    short_description: form.shortDescription,
-    about: form.prerequisites,
-    cover_file: coverFile,
-    links: links.map((l) => String(l || "").trim()).filter(Boolean),
-    faqs: faqs.filter((f) => String(f.q || "").trim() || String(f.a || "").trim()),
-    deliverables: resources.filter(
-      (d) =>
-        d.file ||
-        String(d.notes || "").trim() ||
-        String(d.existing_file_url || "").trim()
-    ),
-    details: {
-      product_type: form.productType,
-      price: form.price,
-      tools,
-      included: courseIncluded,
-      learning_points: learningPoints,
-      languages,
-      preview_video_file: previewVideoFile,
-      lessons: lessons
-        .filter(
-          (lesson) =>
-            String(lesson.title || "").trim() ||
-            String(lesson.description || "").trim() ||
-            lesson.media?.file ||
-            lesson.media?.preview
-        )
-        .map((lesson) => ({
-          title: lesson.title,
-          description: lesson.description,
-          media_file: lesson.media?.file || null,
-          media_type: lesson.media?.type || null,
-        })),
-    },
-  });
+  listing_type: LISTING_TYPE,
+  status: "published",
+  title: form.title,
+  category: form.category,
+  sub_category: form.subCategory,
+  short_description: form.shortDescription,
+  about: form.prerequisites,
+
+  cover_file: coverFile || null,
+  existing_cover_url: !coverFile ? existingCoverUrl || "" : "",
+
+  links: links.map((l) => String(l || "").trim()).filter(Boolean),
+
+  faqs: faqs.filter(
+    (f) => String(f.q || "").trim() || String(f.a || "").trim()
+  ),
+
+  deliverables: resources.filter(
+    (d) =>
+      d.file ||
+      String(d.notes || "").trim() ||
+      String(d.existing_file_url || "").trim()
+  ),
+
+  details: {
+    product_type: form.productType,
+    price: form.price,
+    tools,
+    included: courseIncluded,
+    learning_points: learningPoints,
+    languages,
+
+    preview_video_file: previewVideoFile || null,
+    existing_preview_video_url: !previewVideoFile ? existingPreviewVideoUrl || "" : "",
+
+    lessons: lessons
+      .filter(
+        (lesson) =>
+          String(lesson.title || "").trim() ||
+          String(lesson.description || "").trim() ||
+          lesson.media?.file ||
+          lesson.media?.existing_url ||
+          lesson.media?.preview
+      )
+      .map((lesson) => ({
+        title: lesson.title,
+        description: lesson.description,
+
+        media_file: lesson.media?.file || null,
+        media_type: lesson.media?.type || null,
+
+        existing_media_path:
+          !lesson.media?.file && lesson.media?.existing_path
+            ? lesson.media.existing_path.replace("/storage/", "")
+            : "",
+
+        existing_media_path:
+          !lesson.media?.file && lesson.media?.existing_path
+            ? lesson.media.existing_path
+            : "",
+      })),
+  },
+});
 
   const handleSaveListing = async () => {
     const validationError = validateBeforeSave();
@@ -879,6 +910,7 @@ export default function CreateCourse({
                     onRemoveCover={() => {
                       setCover(null);
                       setCoverFile(null);
+                      setExistingCoverUrl("");
                     }}
                   />
 
@@ -924,6 +956,7 @@ export default function CreateCourse({
                       onClose={() => {
                         setPreviewVideo(null);
                         setPreviewVideoFile(null);
+                        setExistingPreviewVideoUrl("");
                       }}
                     />
                   </div>
