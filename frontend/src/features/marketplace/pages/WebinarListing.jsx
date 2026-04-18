@@ -290,6 +290,10 @@ const WebinarListing = ({ theme, setTheme }) => {
     ? webinarDetails.languages
     : [];
 
+  const key_outcomes = Array.isArray(webinarDetails?.key_outcomes)
+    ? webinarDetails.key_outcomes
+    : [];
+
   const agendaItems = Array.isArray(webinarDetails?.agenda)
     ? webinarDetails.agenda
     : [];
@@ -498,6 +502,17 @@ const WebinarListing = ({ theme, setTheme }) => {
                     ) : (
                       <p>No learning points added yet.</p>
                     )}
+                  </div>
+                  
+                  <div className="cl-section">
+                    <h2>Key Outcomes</h2>
+                    <div className="cl-tools-list">
+                      {key_outcomes.length ? (
+                        key_outcomes.map((key_outcome) => <strong key={key_outcome}>{key_outcome}</strong>)
+                      ) : (
+                        <strong>Not specified</strong>
+                      )}
+                    </div>
                   </div>
 
                   <div className="cl-section">
