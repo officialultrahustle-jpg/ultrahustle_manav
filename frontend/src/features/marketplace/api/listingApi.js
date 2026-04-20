@@ -81,8 +81,18 @@ export const createListing = async (payload) => {
       formData.append("team_name", payload.team_name);
     }
 
-    if (payload.cover_file) {
+    if (payload.cover_files && Array.isArray(payload.cover_files)) {
+      payload.cover_files.forEach((file, index) => {
+        if (file) formData.append(`cover_files[${index}]`, file);
+      });
+    } else if (payload.cover_file) {
       formData.append("cover_file", payload.cover_file);
+    }
+
+    if (payload.existing_cover_urls && Array.isArray(payload.existing_cover_urls)) {
+      payload.existing_cover_urls.forEach((url, index) => {
+        formData.append(`existing_cover_urls[${index}]`, url);
+      });
     }
 
     (payload.tags || []).forEach((tag, index) => {
@@ -337,8 +347,18 @@ export const updateListing = async (username, payload) => {
       formData.append("team_name", payload.team_name);
     }
 
-    if (payload.cover_file) {
+    if (payload.cover_files && Array.isArray(payload.cover_files)) {
+      payload.cover_files.forEach((file, index) => {
+        if (file) formData.append(`cover_files[${index}]`, file);
+      });
+    } else if (payload.cover_file) {
       formData.append("cover_file", payload.cover_file);
+    }
+
+    if (payload.existing_cover_urls && Array.isArray(payload.existing_cover_urls)) {
+      payload.existing_cover_urls.forEach((url, index) => {
+        formData.append(`existing_cover_urls[${index}]`, url);
+      });
     }
 
     (payload.tags || []).forEach((tag, index) => {

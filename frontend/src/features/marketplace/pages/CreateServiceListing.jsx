@@ -59,14 +59,15 @@ export default function CreateServiceListing({
 
   const [initialLoading, setInitialLoading] = useState(isEditMode);
   const [isMetaLoading, setIsMetaLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(null); // null | "draft" | "published"
 
   const [listingId, setListingId] = useState(null);
   const [saveError, setSaveError] = useState("");
 
-  const [cover, setCover] = useState(null);
-  const [coverFile, setCoverFile] = useState(null);
+  const [coverImages, setCoverImages] = useState([]); // preview URLs
+  const [coverFiles, setCoverFiles] = useState([]);   // File objects
   const [existingCoverUrl, setExistingCoverUrl] = useState("");
+  const [coverSlideIdx, setCoverSlideIdx] = useState(0);
 
   const [portfolioProjects, setPortfolioProjects] = useState([]);
 
@@ -326,10 +327,18 @@ if (normalizedAddOns.length > 0) {
             : [{ q: "", a: "" }]
         );
 
-        if (item.cover_media_url || item.cover_media_path) {
+        const gallery = Array.isArray(item.gallery) ? item.gallery : [];
+        if (gallery.length > 0) {
+          setCoverImages(gallery);
+          setCoverFiles([]);
+          setExistingCoverUrl(gallery[0] || "");
+          setCoverSlideIdx(0);
+        } else if (item.cover_media_url || item.cover_media_path) {
           const coverUrl = item.cover_media_url || item.cover_media_path;
-          setCover(coverUrl);
+          setCoverImages([coverUrl]);
+          setCoverFiles([]);
           setExistingCoverUrl(coverUrl);
+          setCoverSlideIdx(0);
         }
       } catch (e) {
         Swal.fire({
@@ -434,13 +443,21 @@ if (normalizedAddOns.length > 0) {
     setAddOns(addOns.filter((_, i) => i !== idx));
   };
 
-  const applyCoverFile = (file) => {
-    if (!file) return;
-    setCoverFile(file);
-
-    const reader = new FileReader();
-    reader.onload = () => setCover(reader.result);
-    reader.readAsDataURL(file);
+  const applyCoverFiles = (files) => {
+    if (!files || !files.length) return;
+    setCoverFiles(files);
+    const readers = files.map(
+      (file) =>
+        new Promise((resolve) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.readAsDataURL(file);
+        })
+    );
+    Promise.all(readers).then((urls) => {
+      setCoverImages(urls);
+      setCoverSlideIdx(0);
+    });
   };
 
   const buildPayload = (status) => {
@@ -492,8 +509,8 @@ if (normalizedAddOns.length > 0) {
       seller_mode: sellerMode,
       team_name: sellerMode === "Team" ? teamName : "",
 
-      cover_file: coverFile || null,
-      existing_cover_url: !coverFile ? existingCoverUrl || "" : "",
+      cover_files: coverFiles.length ? coverFiles : null,
+      existing_cover_url: !coverFiles.length ? existingCoverUrl || "" : "",
 
       tags,
       faqs: faqs.filter((f) => String(f.q || "").trim() || String(f.a || "").trim()),
@@ -535,12 +552,17 @@ if (normalizedAddOns.length > 0) {
         icon: "warning",
         title: "Validation error",
         text: validationError,
+        background: "#0b0b0b",
+        color: "#ffffff",
+        iconColor: "#CEFF1B",
+        confirmButtonColor: "#CEFF1B",
+        confirmButtonText: "<span style='color:#000;font-weight:700'>OK</span>",
       });
       return;
     }
 
     try {
-      setIsSubmitting(true);
+      setSavingStatus(status);
       setSaveError("");
 
       const res = isEditMode
@@ -555,11 +577,14 @@ if (normalizedAddOns.length > 0) {
           (isEditMode
             ? "Your service has been updated successfully."
             : "Your service has been created successfully."),
-        confirmButtonText: "OK",
+        background: "#0b0b0b",
+        color: "#ffffff",
+        iconColor: "#CEFF1B",
+        confirmButtonColor: "#CEFF1B",
+        confirmButtonText: "<span style='color:#000;font-weight:700'>Go to My Listings</span>",
+        customClass: { popup: "swal-brand-popup", confirmButton: "swal-brand-confirm" },
       }).then((result) => {
-        if (result.isConfirmed) {
-          navigate("/my-listings");
-        }
+        if (result.isConfirmed) navigate("/my-listings");
       });
     } catch (e) {
       setSaveError(e?.message || "Failed to save service listing.");
@@ -567,9 +592,14 @@ if (normalizedAddOns.length > 0) {
         icon: "error",
         title: isEditMode ? "Update failed" : "Save failed",
         text: e?.message || `Failed to ${isEditMode ? "update" : "save"} service listing.`,
+        background: "#0b0b0b",
+        color: "#ffffff",
+        iconColor: "#ff4444",
+        confirmButtonColor: "#CEFF1B",
+        confirmButtonText: "<span style='color:#000;font-weight:700'>Try Again</span>",
       });
     } finally {
-      setIsSubmitting(false);
+      setSavingStatus(null);
     }
   };
 
@@ -776,15 +806,26 @@ if (normalizedAddOns.length > 0) {
                   <div className="csl-group-box">
                     <div className="csl-field">
                       <label className="csl-label">Tags</label>
-                      <input
-                        className="csl-input"
-                        placeholder="Add tag and press Enter"
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        onKeyDown={(e) =>
-                          onEnterAdd(e, () => addSimpleItem(tagInput, setTagInput, tags, setTags))
-                        }
-                      />
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <input
+                          className="csl-input"
+                          placeholder="Add tag and press Enter"
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyDown={(e) =>
+                            onEnterAdd(e, () => addSimpleItem(tagInput, setTagInput, tags, setTags))
+                          }
+                          style={{ flex: 1 }}
+                        />
+                        <button
+                          type="button"
+                          className="csl-add-btn-lime-below"
+                          style={{ flexShrink: 0 }}
+                          onClick={() => addSimpleItem(tagInput, setTagInput, tags, setTags)}
+                        >
+                          + Add
+                        </button>
+                      </div>
 
                       {tags.length > 0 && (
                         <div className="csl-chips-container mt-4">
@@ -1061,10 +1102,71 @@ if (normalizedAddOns.length > 0) {
                 </div>
 
                 <div className="csl-card">
-                  <h2 className="csl-section">Cover</h2>
+                  <h2 className="csl-section">Cover Images</h2>
+                  <p className="csl-label" style={{marginBottom:'8px',opacity:.7}}>Upload up to 9 images — first image is the primary cover.</p>
                   <div className="am-uploadBox">
-                    {cover ? (
-                      <img src={cover} alt="cover" className="am-preview" />
+                    {coverImages.length > 0 ? (
+                      <>
+                        {/* Slider Preview */}
+                        <div className="am-cover-slider" style={{position:'relative',width:'100%'}}>
+                          <img
+                            src={coverImages[coverSlideIdx]}
+                            alt={`cover ${coverSlideIdx + 1}`}
+                            className="am-preview"
+                            style={{display:'block'}}
+                          />
+                          {coverImages.length > 1 && (
+                            <>
+                              <button
+                                type="button"
+                                className="am-slide-btn left"
+                                onClick={() => setCoverSlideIdx((p) => (p - 1 + coverImages.length) % coverImages.length)}
+                              >&#8249;</button>
+                              <button
+                                type="button"
+                                className="am-slide-btn right"
+                                onClick={() => setCoverSlideIdx((p) => (p + 1) % coverImages.length)}
+                              >&#8250;</button>
+                              <div className="am-slide-dots">
+                                {coverImages.map((_, i) => (
+                                  <span
+                                    key={i}
+                                    className={`am-dot ${i === coverSlideIdx ? 'active' : ''}`}
+                                    onClick={() => setCoverSlideIdx(i)}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                          <div className="am-slide-count">{coverSlideIdx + 1} / {coverImages.length}</div>
+                        </div>
+                        {/* Thumbnail strip */}
+                        {coverImages.length > 1 && (
+                          <div className="am-thumb-strip">
+                            {coverImages.map((img, i) => (
+                              <img
+                                key={i}
+                                src={img}
+                                alt={`thumb ${i + 1}`}
+                                className={`am-thumb ${i === coverSlideIdx ? 'active' : ''}`}
+                                onClick={() => setCoverSlideIdx(i)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          className="am-changeBtn"
+                          onClick={() => setUploadStep("grid")}
+                          title="Change cover images"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                          Change
+                        </button>
+                      </>
                     ) : (
                       <div className="am-placeholder">
                         <button
@@ -1072,19 +1174,20 @@ if (normalizedAddOns.length > 0) {
                           className="am-uploadBtn"
                           onClick={() => setUploadStep("grid")}
                         >
-                          Upload Cover
+                          Upload Cover Images
                         </button>
                       </div>
                     )}
 
-                    {cover && (
+                    {coverImages.length > 0 && (
                       <button
                         type="button"
                         className="am-removeImg"
                         onClick={() => {
-                          setCover(null);
-                          setCoverFile(null);
+                          setCoverImages([]);
+                          setCoverFiles([]);
                           setExistingCoverUrl("");
+                          setCoverSlideIdx(0);
                         }}
                       >
                         ×
@@ -1148,23 +1251,23 @@ if (normalizedAddOns.length > 0) {
                 <div className="flex justify-end gap-4 pb-12">
                   <button
                     type="button"
-                    className="px-6 py-3 rounded-xl border border-black"
+                    className="px-6 py-3 rounded-xl border border-black dark:border-white/20 dark:text-white"
                     onClick={() => handleSaveListing("draft")}
-                    disabled={isSubmitting}
+                    disabled={savingStatus !== null}
                   >
-                    Save Draft
+                    {savingStatus === "draft" ? (
+                      <span className="saving-indicator"><span className="saving-dot" />Saving...</span>
+                    ) : "Save Draft"}
                   </button>
                   <button
                     type="button"
-                    className="px-6 py-3 rounded-xl bg-[#CEFF1B] border border-black font-semibold"
+                    className={`px-6 py-3 rounded-xl bg-[#CEFF1B] border border-black font-semibold${savingStatus === "published" ? " saving" : ""}`}
                     onClick={() => handleSaveListing("published")}
-                    disabled={isSubmitting}
+                    disabled={savingStatus !== null}
                   >
-                    {isSubmitting
-                      ? "Saving..."
-                      : isEditMode
-                        ? "Update Service"
-                        : "Create Service"}
+                    {savingStatus === "published" ? (
+                      <span className="saving-indicator"><span className="saving-dot" />Saving...</span>
+                    ) : isEditMode ? "Update Service" : "Create Service"}
                   </button>
                 </div>
               </div>
@@ -1184,11 +1287,12 @@ if (normalizedAddOns.length > 0) {
             {(uploadStep === "grid" || uploadStep === "success") && (
               <UploadGrid
                 blurred={uploadStep === "success"}
-                onBack={() => setUploadStep(null)}
+                initialFiles={coverFiles}
                 onSelect={(files) => {
-                  if (files?.[0]) applyCoverFile(files[0]);
+                  if (files?.length) applyCoverFiles(files);
                   setUploadStep("success");
                 }}
+                onBack={() => setUploadStep(null)}
               />
             )}
 
@@ -1244,9 +1348,9 @@ function CustomSelect({ value, onChange, options, placeholder, disabled = false 
   );
 }
 
-function UploadGrid({ onSelect, onBack, blurred }) {
+function UploadGrid({ onSelect, onBack, blurred, initialFiles = [] }) {
   const fileRef = useRef(null);
-  const [files, setFiles] = useState([]);
+  const [files, setFiles] = useState(initialFiles);
   const activeIndexRef = useRef(null);
 
   const handleFiles = (e) => {

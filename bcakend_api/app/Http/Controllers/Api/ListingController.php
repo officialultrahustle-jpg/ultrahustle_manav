@@ -31,7 +31,8 @@ class ListingController extends Controller
         'seller_mode' => 'nullable|in:Solo,Team',
         'team_name' => 'nullable|string|max:255',
 
-        'cover_file' => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,mov,avi,mkv|max:20480',
+        'cover_files' => 'nullable|array',
+        'cover_files.*' => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,mov,avi,mkv|max:20480',
 
         'tags' => 'nullable|array',
         'tags.*' => 'nullable|string|max:100',
@@ -118,9 +119,21 @@ class ListingController extends Controller
 
     $listing = DB::transaction(function () use ($request, $user, $validated, $username) {
         $coverPath = null;
+        $galleryPaths = [];
 
-        if ($request->hasFile('cover_file')) {
+        if ($request->hasFile('cover_files')) {
+            foreach ($request->file('cover_files') as $idx => $file) {
+                if ($file) {
+                    $path = $file->store('listings/covers', 'public');
+                    if ($idx === 0) {
+                        $coverPath = $path;
+                    }
+                    $galleryPaths[] = $path;
+                }
+            }
+        } else if ($request->hasFile('cover_file')) {
             $coverPath = $request->file('cover_file')->store('listings/covers', 'public');
+            $galleryPaths[] = $coverPath;
         }
 
         $cleanTags = array_values(array_filter(array_map(
@@ -169,6 +182,7 @@ class ListingController extends Controller
             'tools_json' => !empty($cleanTools) ? json_encode($cleanTools) : null,
             'ai_powered' => (int) ($validated['ai_powered'] ?? false),
             'cover_media_path' => $coverPath,
+            'gallery_json' => !empty($galleryPaths) ? json_encode($galleryPaths) : null,
             'status' => $validated['status'] ?? 'published',
             'created_at' => now(),
             'updated_at' => now(),
@@ -587,7 +601,8 @@ public function updateListing(Request $request, string $username): JsonResponse
         'seller_mode' => 'nullable|in:Solo,Team',
         'team_name' => 'nullable|string|max:255',
 
-        'cover_file' => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,mov,avi,mkv|max:20480',
+        'cover_files' => 'nullable|array',
+        'cover_files.*' => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,mov,avi,mkv|max:20480',
 
         'tags' => 'nullable|array',
         'tags.*' => 'nullable|string|max:100',
@@ -672,12 +687,28 @@ public function updateListing(Request $request, string $username): JsonResponse
 
     $listing = DB::transaction(function () use ($request, $validated, $existing) {
         $coverPath = $existing->cover_media_path;
+        $galleryPaths = $existing->gallery_json ? json_decode($existing->gallery_json, true) : [];
 
-        if ($request->hasFile('cover_file')) {
+        if ($request->hasFile('cover_files')) {
+            $newGallery = [];
+            foreach ($request->file('cover_files') as $idx => $file) {
+                if ($file) {
+                    $path = $file->store('listings/covers', 'public');
+                    if ($idx === 0) {
+                        $coverPath = $path;
+                    }
+                    $newGallery[] = $path;
+                }
+            }
+            if (!empty($newGallery)) {
+                $galleryPaths = $newGallery;
+            }
+        } else if ($request->hasFile('cover_file')) {
             if ($coverPath && Storage::disk('public')->exists($coverPath)) {
                 Storage::disk('public')->delete($coverPath);
             }
             $coverPath = $request->file('cover_file')->store('listings/covers', 'public');
+            $galleryPaths = [$coverPath];
         }
 
         $cleanTags = array_values(array_filter(array_map(
@@ -726,6 +757,7 @@ public function updateListing(Request $request, string $username): JsonResponse
                 'tools_json' => !empty($cleanTools) ? json_encode($cleanTools) : null,
                 'ai_powered' => (int) ($validated['ai_powered'] ?? false),
                 'cover_media_path' => $coverPath,
+                'gallery_json' => !empty($galleryPaths) ? json_encode($galleryPaths) : null,
                 'status' => $validated['status'] ?? 'published',
                 'updated_at' => now(),
             ]);
@@ -1621,6 +1653,16 @@ public function updateListing(Request $request, string $username): JsonResponse
             'avg_response' => '1 hour',
         ] : null;
 
+        $gallery = null;
+        if (!empty($listing->gallery_json)) {
+            $decoded = json_decode($listing->gallery_json, true);
+            if (is_array($decoded)) {
+                $gallery = array_map(function($path) {
+                    return Storage::disk('public')->url($path);
+                }, $decoded);
+            }
+        }
+
         return [
             'id' => $listing->id,
             'user_id' => $listing->user_id,
@@ -1639,6 +1681,7 @@ public function updateListing(Request $request, string $username): JsonResponse
             'ai_powered' => (bool) $listing->ai_powered,
             'cover_media_path' => $listing->cover_media_path,
             'cover_media_url' => $listing->cover_media_path ? Storage::disk('public')->url($listing->cover_media_path) : null,
+            'gallery' => $gallery,
             'tags' => $tags,
             'faqs' => $faqs,
             'links' => $links,

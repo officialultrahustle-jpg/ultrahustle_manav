@@ -11,7 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Already added in 2026_04_07_085117_alter_listings_table.php
+        Schema::table('listings', function (Blueprint $table) {
+            $table->json('gallery_json')->nullable()->after('cover_media_path');
+        });
     }
 
     /**
@@ -19,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::table('listings', function (Blueprint $table) {
+            $table->dropColumn('gallery_json');
+        });
     }
 };

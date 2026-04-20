@@ -71,16 +71,17 @@ export default function CreateCourse({
 
   const [previewVideo, setPreviewVideo] = useState(null);
   const [previewVideoFile, setPreviewVideoFile] = useState(null);
+  const [existingPreviewVideoUrl, setExistingPreviewVideoUrl] = useState("");
 
   const [lessons, setLessons] = useState([
     { title: "", description: "", media: null },
     { title: "", description: "", media: null },
     { title: "", description: "", media: null },
   ]);
-  const [existingCoverUrl, setExistingCoverUrl] = useState("");
-  const [existingPreviewVideoUrl, setExistingPreviewVideoUrl] = useState("");
-  const [cover, setCover] = useState(null);
-  const [coverFile, setCoverFile] = useState(null);
+  const [coverImages, setCoverImages] = useState([]);
+  const [coverFiles, setCoverFiles] = useState([]);
+  const [coverSlideIdx, setCoverSlideIdx] = useState(0);
+  const [activePreviewImg, setActivePreviewImg] = useState(0);
 
   const [faqs, setFaqs] = useState([{ q: "", a: "" }]);
 
@@ -239,13 +240,12 @@ export default function CreateCourse({
   };
 
 
-  const handleCoverFileSelect = (file) => {
-    if (!file) return;
-    setCoverFile(file);
-
-    const reader = new FileReader();
-    reader.onload = () => setCover(reader.result);
-    reader.readAsDataURL(file);
+  const applyCoverFiles = (files) => {
+    setCoverFiles(files);
+    const newUrls = files.map((f) => URL.createObjectURL(f));
+    setCoverImages(newUrls);
+    setCoverSlideIdx(0);
+    setActivePreviewImg(0);
   };
 
   const addFaq = () => setFaqs([...faqs, { q: "", a: "" }]);
@@ -369,15 +369,27 @@ export default function CreateCourse({
               ]
         );
 
-        if (item.cover_media_url || item.cover_media_path) {
+        if (item.gallery_json) {
+          try {
+            const gallery = JSON.parse(item.gallery_json);
+            if (Array.isArray(gallery)) {
+              const urls = gallery.map((path) =>
+                path.startsWith("http") ? path : `/storage/${path}`
+              );
+              setCoverImages(urls);
+              setCoverFiles([]); // Existing files are strings, not File objects
+            }
+          } catch (e) {
+            console.error("Failed to parse gallery_json", e);
+          }
+        } else if (item.cover_media_url || item.cover_media_path) {
           const coverUrl = item.cover_media_url || item.cover_media_path;
-          setCover(coverUrl);
-          setExistingCoverUrl(coverUrl);
+          setCoverImages([coverUrl]);
         }
 
         if (item?.details?.preview_video_url) {
-          setPreviewVideo(item.details.preview_video_url);
           setExistingPreviewVideoUrl(item.details.preview_video_url);
+          setPreviewVideo(item.details.preview_video_url);
         }
       } catch (e) {
         Swal.fire({
@@ -412,8 +424,8 @@ export default function CreateCourse({
   short_description: form.shortDescription,
   about: form.prerequisites,
 
-  cover_file: coverFile || null,
-  existing_cover_url: !coverFile ? existingCoverUrl || "" : "",
+  cover_files: coverFiles,
+  existing_cover_urls: coverImages.filter(url => !url.startsWith('blob:')),
 
   links: links.map((l) => String(l || "").trim()).filter(Boolean),
 
@@ -458,11 +470,6 @@ export default function CreateCourse({
         existing_media_path:
           !lesson.media?.file && lesson.media?.existing_path
             ? lesson.media.existing_path.replace("/storage/", "")
-            : "",
-
-        existing_media_path:
-          !lesson.media?.file && lesson.media?.existing_path
-            ? lesson.media.existing_path
             : "",
       })),
   },
@@ -860,6 +867,90 @@ export default function CreateCourse({
 
                     <div className="csl-group-box">
                       <div className="csl-field">
+                        <label className="csl-label">Cover Images</label>
+                        <div className="am-uploader-container">
+                          {coverImages.length > 0 ? (
+                            <>
+                              <div className="am-main-preview">
+                                <img
+                                  src={coverImages[activePreviewImg]}
+                                  className="am-preview-img"
+                                  alt=""
+                                />
+                                {coverImages.length > 1 && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="am-nav-btn prev"
+                                      onClick={() =>
+                                        setActivePreviewImg((p) =>
+                                          p === 0 ? coverImages.length - 1 : p - 1
+                                        )
+                                      }
+                                    >
+                                      ‹
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="am-nav-btn next"
+                                      onClick={() =>
+                                        setActivePreviewImg((p) =>
+                                          p === coverImages.length - 1 ? 0 : p + 1
+                                        )
+                                      }
+                                    >
+                                      ›
+                                    </button>
+                                  </>
+                                )}
+                                <div className="am-dot-strip">
+                                  {coverImages.map((_, i) => (
+                                    <span
+                                      key={i}
+                                      className={`am-dot ${
+                                        i === activePreviewImg ? "active" : ""
+                                      }`}
+                                      onClick={() => setActivePreviewImg(i)}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="am-thumb-strip">
+                                {coverImages.map((url, idx) => (
+                                  <img
+                                    key={idx}
+                                    src={url}
+                                    className={`am-thumb ${
+                                      activePreviewImg === idx ? "active" : ""
+                                    }`}
+                                    onClick={() => setActivePreviewImg(idx)}
+                                    alt=""
+                                  />
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                className="am-change-btn"
+                                onClick={() => setUploadStep("grid")}
+                              >
+                                Change Images
+                              </button>
+                            </>
+                          ) : (
+                            <div
+                              className="am-placeholder"
+                              onClick={() => setUploadStep("grid")}
+                            >
+                              <div className="am-upload-icon">+</div>
+                              <div className="am-upload-text">Upload Cover Images</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="csl-group-box">
+                      <div className="csl-field">
                         <label className="csl-label">Languages</label>
                         <CustomSelect
                           value=""
@@ -901,18 +992,7 @@ export default function CreateCourse({
                     </div>
                   </div>
 
-                  <CoverSection
-                    mode="listing"
-                    listingType={LISTING_TYPE}
-                    cover={cover}
-                    coverFileName={coverFile?.name || ""}
-                    onUploadClick={() => setUploadStep("grid")}
-                    onRemoveCover={() => {
-                      setCover(null);
-                      setCoverFile(null);
-                      setExistingCoverUrl("");
-                    }}
-                  />
+
 
                   <LessonSection
                     lessons={lessons}
@@ -1021,13 +1101,14 @@ export default function CreateCourse({
                       {isSubmitting ? "Saving..." : isEditMode ? "Update" : "Save"}
                     </button>
                   </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {isModalOpen &&
+        {uploadStep &&
           createPortal(
             <div className={`user-page ${theme || "light"}`}>
               <div
@@ -1037,23 +1118,47 @@ export default function CreateCourse({
 
               {(uploadStep === "grid" || uploadStep === "success") && (
                 <UploadGrid
-                  blurred={uploadStep === "success"}
-                  onBack={() => setUploadStep(null)}
+                  initialFiles={coverFiles}
                   onSelect={(files) => {
-                    if (files?.[0]) {
-                      handleCoverFileSelect(files[0]);
-                    }
+                    if (files?.length) applyCoverFiles(files);
                     setUploadStep("success");
                   }}
+                  onBack={() => setUploadStep(null)}
+                  blurred={uploadStep === "success"}
                 />
               )}
 
               {uploadStep === "success" && <UploadSuccess onBack={() => setUploadStep(null)} />}
             </div>,
-            document.body,
+            document.body
           )}
-      </div>
     </>
+  );
+}
+
+function UploadSuccess({ onBack }) {
+  return (
+    <div className="fixed inset-0 z-[10001] flex items-center justify-center pointer-events-auto p-4">
+      <div className="upload-success-card rounded-2xl w-[90%] max-w-[600px] h-auto min-h-[300px] md:h-[400px] py-10 flex flex-col items-center justify-center shadow-[0_0_20px_#CEFF1B] bg-white dark:bg-[#2B2B2B]">
+        <div className="w-24 h-24 bg-[#CEFF1B] rounded-full flex items-center justify-center mb-6">
+          <img src="/right.svg" alt="success" />
+        </div>
+
+        <h3 className="text-2xl font-semibold mb-8 text-black dark:text-white text-center px-4">
+          You have successfully uploaded!
+        </h3>
+
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={onBack}
+            className="upload-btn-confirm px-12 py-3 rounded-lg bg-[#CEFF1B] border border-black font-semibold text-black transition-transform hover:scale-105"
+          >
+            Back
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1101,152 +1206,91 @@ function CustomSelect({ value, onChange, options, placeholder, disabled = false 
   );
 }
 
-function UploadGrid({ onSelect, onBack, blurred }) {
+function UploadGrid({ onSelect, onBack, blurred, initialFiles = [] }) {
   const fileRef = useRef(null);
-  const [files, setFiles] = useState([]);
+  const [files, setFiles] = useState(initialFiles);
   const activeIndexRef = useRef(null);
 
   const handleFiles = (e) => {
-    const selected = Array.from(e.target.files || []);
-    if (activeIndexRef.current === null || selected.length === 0) return;
+    const newFiles = Array.from(e.target.files);
+    if (!newFiles.length) return;
 
-    setFiles((prev) => {
-      const updated = [...prev];
-      updated[activeIndexRef.current] = selected[0];
-      return updated;
-    });
-
-    activeIndexRef.current = null;
+    if (activeIndexRef.current !== null) {
+      const next = [...files];
+      next[activeIndexRef.current] = newFiles[0];
+      setFiles(next);
+      activeIndexRef.current = null;
+    } else {
+      const combined = [...files, ...newFiles].slice(0, 9);
+      setFiles(combined);
+    }
     e.target.value = "";
   };
 
+  const removeFile = (idx, e) => {
+    e.stopPropagation();
+    setFiles(files.filter((_, i) => i !== idx));
+  };
+
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-auto">
-      <div
-        className={`upload-card rounded-2xl p-4 w-[95%] max-w-[820px] h-auto max-h-[90vh] flex flex-col bg-white dark:bg-[#1A1A1A] shadow-[0_0_20px_#CEFF1B] transition-all duration-200 ${
-          blurred ? "blur-sm scale-[0.98] pointer-events-none select-none opacity-95" : ""
-        }`}
-      >
-        <div className="upload-header flex items-center gap-3 mb-3 shrink-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 shrink-0"
-            title="Back"
-          >
-            <img src="/backarrow.svg" alt="back" />
+    <div className={`am-modal-overlay ${blurred ? "blurred" : ""}`}>
+      <div className="am-modal-content">
+        <div className="am-modal-header">
+          <button className="am-back-btn" onClick={onBack}>
+            ← Back
           </button>
-
-          <h4 className="text-sm font-medium text-black dark:text-black">
-            Select and upload your file
-          </h4>
-
+          <h2 className="am-modal-title">Upload Cover Photo</h2>
           <button
-            type="button"
-            onClick={onBack}
-            className="ml-auto w-9 h-9 rounded-full flex items-center justify-center hover:bg-[#CEFF1B]"
-            title="Close"
+            className="am-done-btn"
+            onClick={() => onSelect(files)}
+            disabled={!files.length}
           >
-            ✕
+            Done
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 flex-1 overflow-y-auto pr-2 custom-scroll">
-          {Array.from({ length: 9 }).map((_, i) => {
+        <div className="am-upload-grid">
+          {[...Array(9)].map((_, i) => {
             const file = files[i];
+            const url = file ? URL.createObjectURL(file) : null;
+
             return (
               <div
                 key={i}
+                className={`am-grid-slot ${file ? "has-file" : ""}`}
                 onClick={() => {
                   activeIndexRef.current = i;
                   fileRef.current?.click();
                 }}
-                className="upload-slot relative h-[110px] rounded-xl flex items-center justify-center cursor-pointer overflow-hidden bg-gray-100 dark:bg-gray-800"
               >
-                {i === 0 && (
-                  <span className="absolute inset-0 z-10 flex items-center justify-center px-2 pointer-events-none">
-                    <span className="bg-[#CEFF1B] text-black font-medium text-[10px] sm:text-xs px-2 py-[3px] rounded max-w-[90%] text-center whitespace-normal leading-tight">
-                      Upload Cover Image
-                    </span>
-                  </span>
-                )}
-
-                {file ? (
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
+                {url ? (
+                  <>
+                    <img src={url} alt="" className="am-slot-img" />
+                    <button
+                      className="am-remove-slot"
+                      onClick={(e) => removeFile(i, e)}
+                    >
+                      ×
+                    </button>
+                  </>
                 ) : (
-                  i !== 0 && (
-                    <div className="relative pointer-events-none">
-                      <img src="/video2.svg" className="w-10 mr-8 mt-2 opacity-60" alt="" />
-                      <img src="/video1.svg" className="w-12 absolute -right-2 -top-3 opacity-60" alt="" />
-                      <div className="absolute bottom-4 right-6 w-6 h-6 rounded-full bg-[#CEFF1B] flex items-center justify-center text-black font-bold">
-                        +
-                      </div>
-                    </div>
-                  )
+                  <div className="am-slot-add">+</div>
                 )}
               </div>
             );
           })}
         </div>
-
-        <div className="flex justify-end items-center mt-3 shrink-0">
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              className="upload-btn-cancel px-4 py-2 rounded-lg text-sm border border-black dark:border-white/20 dark:text-white"
-            >
-              Cancel
-            </button>
-            {files.filter(Boolean).length > 0 && (
-              <button
-                type="button"
-                onClick={() => onSelect(files.filter(Boolean))}
-                className="upload-btn-confirm px-5 py-2 rounded-lg text-sm font-medium bg-[#CEFF1B] border border-black"
-              >
-                Upload
-              </button>
-            )}
-          </div>
-        </div>
-
         <input
-          ref={fileRef}
           type="file"
-          accept="image/*,video/*"
-          onChange={handleFiles}
+          ref={fileRef}
           className="hidden"
+          multiple
+          accept="image/*"
+          onChange={handleFiles}
         />
-      </div>
-    </div>
-  );
-}
-
-function UploadSuccess({ onBack }) {
-  return (
-    <div className="fixed inset-0 z-[10001] flex items-center justify-center pointer-events-auto p-4">
-      <div className="upload-success-card rounded-2xl w-[90%] max-w-[600px] h-auto min-h-[300px] md:h-[400px] py-10 flex flex-col items-center justify-center shadow-[0_0_20px_#CEFF1B] bg-white dark:bg-[#2B2B2B]">
-        <div className="w-24 h-24 bg-[#CEFF1B] rounded-full flex items-center justify-center mb-6">
-          <img src="/right.svg" alt="success" />
-        </div>
-
-        <h3 className="text-2xl font-semibold mb-8 text-black dark:text-white text-center px-4">
-          You have successfully uploaded!
-        </h3>
-
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onBack}
-            className="upload-btn-confirm px-12 py-3 rounded-lg bg-[#CEFF1B] border border-black font-semibold text-black transition-transform hover:scale-105"
-          >
-            Back
-          </button>
-        </div>
+        <p className="am-modal-hint">
+          Upload up to 9 images. The first image will be your main cover.
+        </p>
       </div>
     </div>
   );

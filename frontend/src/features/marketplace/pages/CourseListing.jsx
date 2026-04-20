@@ -199,16 +199,21 @@ const CourseListing = ({ theme, setTheme }) => {
       .map((item) => toMediaUrl(String(item || "")))
       .filter(Boolean);
 
-    if (normalizedGallery.length) return normalizedGallery;
-
     const cover =
       listing?.cover_media_url ||
       listing?.cover_media_path ||
       listing?.cover ||
       "";
+    const coverUrl = cover ? toMediaUrl(cover) : "";
 
-    return cover ? [toMediaUrl(cover)] : [];
-  }, [listing]);
+    const portfolioImages = (Array.isArray(portfolioProjects) ? portfolioProjects : [])
+      .map((p) => getPortfolioImage(p))
+      .filter(Boolean);
+
+    const combined = [...new Set([coverUrl, ...normalizedGallery, ...portfolioImages].filter(Boolean))];
+
+    return combined.length ? combined : [];
+  }, [listing, portfolioProjects]);
 
   const courseDetails = useMemo(() => listing?.details || {}, [listing]);
 
