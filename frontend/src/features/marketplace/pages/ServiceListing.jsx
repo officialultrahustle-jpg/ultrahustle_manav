@@ -534,13 +534,22 @@ const ServiceListing = ({ theme, setTheme }) => {
                                     <div className="tsl-profile-mini-card">
                                         <div className="tsl-pmc-left">
                                             <div className="tsl-pmc-avatar-wrap">
-                                                <div className="tsl-pmc-avatar-bg"></div>
+                                                {listing?.creator?.avatar_url ? (
+                                                    <img 
+                                                        src={listing.creator.avatar_url} 
+                                                        alt="Avatar" 
+                                                        className="tsl-pmc-avatar-img"
+                                                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                                                    />
+                                                ) : (
+                                                    <div className="tsl-pmc-avatar-bg"></div>
+                                                )}
                                                 <div className="tsl-pmc-status-dot"></div>
                                             </div>
                                             <div className="tsl-pmc-info">
                                                 <div className="tsl-pmc-name-row">
                                                     <span className="tsl-pmc-name">
-                                                        Sarah Anderson
+                                                        {listing?.creator?.full_name || listing?.creator?.username || "Profile"}
                                                     </span>
                                                     <div className="tsl-pmc-online-badge">
                                                         <div className="tsl-pmc-online-dot"></div>
@@ -550,12 +559,12 @@ const ServiceListing = ({ theme, setTheme }) => {
                                                 <div className="tsl-pmc-meta">
                                                     <Clock size={14} />
                                                     <span>
-                                                        Avg response: 1 hour
+                                                        Avg response: {listing?.creator?.avg_response || "—"}
                                                     </span>
                                                 </div>
                                                 <div className="tsl-pmc-role-row">
                                                     <span className="tsl-pmc-role">
-                                                        Full Stack Developer
+                                                        {listing?.creator?.role || "Creator"}
                                                     </span>
                                                     <div className="tsl-pmc-rating">
                                                         <Star
@@ -564,7 +573,7 @@ const ServiceListing = ({ theme, setTheme }) => {
                                                             color="#CEFF1B"
                                                         />
                                                         <span>
-                                                            4.9(247 reviews)
+                                                            {listing?.creator?.rating || 0} ({listing?.creator?.review_count || 0} reviews)
                                                         </span>
                                                     </div>
                                                 </div>

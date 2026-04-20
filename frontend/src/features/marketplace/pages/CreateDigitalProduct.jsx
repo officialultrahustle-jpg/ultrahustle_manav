@@ -12,6 +12,7 @@ import {
   getListingByUsername,
   getListingDropdowns,
 } from "../api/listingApi";
+import DeliverablesSection from "../components/DeliverablesSection";
 import Swal from "sweetalert2";
 
 export default function CreateDigitalProduct({
@@ -464,11 +465,22 @@ export default function CreateDigitalProduct({
           : [""],
       );
 
-      setNotes(
-        Array.isArray(listing.deliverables) && listing.deliverables.length
-          ? listing.deliverables.map((item) => item.notes || "")
-          : [""],
-      );
+      if (Array.isArray(listing.deliverables) && listing.deliverables.length) {
+        setMainDeliverables(
+          listing.deliverables.map((d) => ({
+            file: null,
+            notes: d.notes || "",
+            existing_file_name: d.file_name || "",
+            existing_file_url: d.file_url || "",
+            name: d.file_name,
+            size: d.file_size,
+          }))
+        );
+        setNotes(listing.deliverables.map((item) => item.notes || ""));
+      } else {
+        setMainDeliverables([]);
+        setNotes([]);
+      }
 
       const gallery = Array.isArray(listing.gallery) ? listing.gallery : [];
       if (gallery.length > 0) {
@@ -563,9 +575,10 @@ export default function CreateDigitalProduct({
         }))
         .filter((item) => item.q || item.a),
       links: links.map((item) => item.trim()).filter(Boolean),
-      deliverables: mainDeliverables.map((file, index) => ({
-        file,
-        notes: notes[index] || "",
+      deliverables: mainDeliverables.map((d, index) => ({
+        file: d instanceof File ? d : (d.file instanceof File ? d.file : null),
+        notes: notes[index] || (typeof d === 'object' ? d.notes : "") || "",
+        existing_file_url: d.existing_file_url || d.file_url || ""
       })),
       details: {
         product_type: form.productType || "",
@@ -1108,117 +1121,32 @@ export default function CreateDigitalProduct({
                   />
                 </div>
 
-                <div className="border !border-[#CEFF1B] rounded-xl p-4 bg-white dark:bg-[#141414]">
-                  <h3 className="text-lg font-semibold mb-3 text-gray-700 dark:text-white">
-                    Upload main deliverables
-                  </h3>
-
-                  {/* Hidden input for "Add more" button */}
-                  <input
-                    ref={deliverableFileRef}
-                    type="file"
-                    multiple
-                    accept="application/pdf,image/jpeg,image/jpg,.jpg,.jpeg,.psd,image/vnd.adobe.photoshop"
-                    className="hidden"
-                    onChange={handleMainDeliverablesChange}
-                  />
-
-                  {/* Drop zone */}
-                  <div
-                    className={`deliverable-dropzone${isDragging ? " drag-over" : ""}`}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                    onClick={() => deliverableFileRef.current?.click()}
-                  >
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#CEFF1B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                      <polyline points="17 8 12 3 7 8"/>
-                      <line x1="12" y1="3" x2="12" y2="15"/>
-                    </svg>
-                    <span className="deliverable-dropzone-label">
-                      <span style={{ color: "#CEFF1B", fontWeight: 600 }}>Click to upload</span>
-                      {" "}or drag &amp; drop
-                    </span>
-                    <span className="deliverable-dropzone-hint">
-                      PDF, JPG, JPEG, PSD — up to 5GB per file
-                    </span>
-                  </div>
-
-                  {/* Uploaded files list with per-file notes */}
-                  {mainDeliverables.length > 0 && (
-                    <div className="deliverable-file-list">
-                      {mainDeliverables.map((file, idx) => (
-                        <div key={`${file.name}-${idx}`} className="deliverable-file-card">
-                          <div className="deliverable-file-header">
-                            <div className="deliverable-file-info">
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                              </svg>
-                              <span className="deliverable-file-name">{file.name}</span>
-                              <span className="deliverable-file-size">
-                                {(file.size / 1024 / 1024).toFixed(2)} MB
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              className="deliverable-file-remove"
-                              onClick={() => removeDeliverable(idx)}
-                              aria-label="Remove file"
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <div className="deliverable-notes-wrap">
-                            <label className="deliverable-notes-label">Notes for this file</label>
-                            <textarea
-                              placeholder="Add notes for this file (optional)"
-                              value={notes[idx] || ""}
-                              onChange={(e) => updateNoteField(idx, e.target.value)}
-                              className="deliverable-notes-textarea"
-                              rows={2}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={addMoreDeliverables}
-                        className="deliverable-add-more"
-                      >
-                        + Add more files
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Links section */}
-                  <div className="mt-4">
-                    <label className="text-sm font-medium text-black dark:text-gray-200">
-                      Link (Figma, Notion, GitHub, etc.)
-                    </label>
-                    <div className="mt-2 space-y-2">
-                      {links.map((link, idx) => (
-                        <input
-                          key={idx}
-                          placeholder="Paste link here"
-                          value={link}
-                          onChange={(e) => updateLinkField(idx, e.target.value)}
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:border-[#CEFF1B]"
-                        />
-                      ))}
-                    </div>
-                    <div className="flex justify-end mt-2">
-                      <button
-                        type="button"
-                        onClick={addLinkField}
-                        className="bg-[#CEFF1B] text-black text-sm font-semibold px-3 py-2 rounded-md hover:opacity-90"
-                      >
-                        + Add link
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <DeliverablesSection
+                  deliverables={mainDeliverables.map((d, idx) => ({
+                    file: d instanceof File ? d : (d.file instanceof File ? d.file : null),
+                    name: d.file_name || d.name,
+                    size: d.file_size || d.size,
+                    notes: notes[idx] || (typeof d === 'object' ? d.notes : "") || "",
+                  }))}
+                  onAddDeliverable={(file) => {
+                    setMainDeliverables((p) => [...p, file]);
+                    setNotes((p) => [...p, ""]);
+                  }}
+                  onRemoveDeliverable={(idx) => {
+                    setMainDeliverables((p) => p.filter((_, i) => i !== idx));
+                    setNotes((p) => p.filter((_, i) => i !== idx));
+                  }}
+                  onUpdateDeliverableNotes={(idx, val) => {
+                    setNotes((p) => p.map((n, i) => (i === idx ? val : n)));
+                  }}
+                  onUpdateDeliverableFile={(idx, file) => {
+                    setMainDeliverables((p) => p.map((f, i) => (i === idx ? file : f)));
+                  }}
+                  links={links}
+                  onAddLink={() => setLinks((p) => [...p, ""])}
+                  onRemoveLink={(idx) => setLinks((p) => p.filter((_, i) => i !== idx))}
+                  onUpdateLink={(idx, val) => setLinks((p) => p.map((l, i) => (i === idx ? val : l)))}
+                />
 
                 <div className="faq-wrap">
                   <h3 className="faq-title">FAQs</h3>

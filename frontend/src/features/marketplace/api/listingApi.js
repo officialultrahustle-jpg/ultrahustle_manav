@@ -146,10 +146,19 @@ export const createListing = async (payload) => {
       );
 
       (project.files || []).forEach((file, fileIndex) => {
-        formData.append(
-          `portfolio_projects[${index}][files][${fileIndex}]`,
-          file
-        );
+        if (file instanceof File) {
+          formData.append(
+            `portfolio_projects[${index}][files][${fileIndex}]`,
+            file
+          );
+        }
+      });
+
+      (project.existing_media || project.media || []).forEach((m, mIdx) => {
+        const path = typeof m === 'string' ? m : (m.path || m.url);
+        if (path && typeof path === 'string' && !path.startsWith('blob:')) {
+          formData.append(`portfolio_projects[${index}][existing_media][${mIdx}]`, path);
+        }
       });
     });
 
@@ -578,10 +587,19 @@ export const updateListing = async (username, payload) => {
       }
 
       (project.files || []).forEach((file, fileIndex) => {
-        formData.append(
-          `portfolio_projects[${index}][files][${fileIndex}]`,
-          file
-        );
+        if (file instanceof File) {
+          formData.append(
+            `portfolio_projects[${index}][files][${fileIndex}]`,
+            file
+          );
+        }
+      });
+
+      (project.existing_media || project.media || []).forEach((m, mIdx) => {
+        const path = typeof m === 'string' ? m : (m.path || m.url);
+        if (path && typeof path === 'string' && !path.startsWith('blob:')) {
+          formData.append(`portfolio_projects[${index}][existing_media][${mIdx}]`, path);
+        }
       });
     });
 

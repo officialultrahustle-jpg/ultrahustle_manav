@@ -537,24 +537,48 @@ class ListingController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                if (Schema::hasTable('portfolio_media') && !empty($files)) {
-                    foreach ($files as $mediaIndex => $mediaFile) {
-                        if (!$mediaFile) {
-                            continue;
+                if (Schema::hasTable('portfolio_media')) {
+                    // 1. Handle existing media
+                    $existingMedia = (array) ($projectInput['existing_media'] ?? []);
+                    foreach ($existingMedia as $mIdx => $mPath) {
+                        if (empty($mPath)) continue;
+                        
+                        // Ensure it's a relative path
+                        $cleanPath = str_replace(url('storage') . '/', '', $mPath);
+                        $cleanPath = str_replace(Storage::disk('public')->url(''), '', $cleanPath);
+                        $cleanPath = str_replace('/storage/', '', $cleanPath);
+
+                        if (Storage::disk('public')->exists($cleanPath)) {
+                            DB::table('portfolio_media')->insert([
+                                'project_id' => $projectId,
+                                'path' => $cleanPath,
+                                'type' => in_array(strtolower(pathinfo($cleanPath, PATHINFO_EXTENSION)), ['mp4','mov','avi','mkv','webm'], true) ? 'video' : 'image',
+                                'sort_order' => $mIdx,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
                         }
+                    }
 
-                        $mediaPath = $mediaFile->store('portfolio/media', 'public');
-                        $mime = $mediaFile->getMimeType();
-                        $type = str_starts_with((string) $mime, 'video/') ? 'video' : 'image';
+                    // 2. Handle new files
+                    if (!empty($files)) {
+                        $startOrder = count($existingMedia);
+                        foreach ($files as $mediaIndex => $mediaFile) {
+                            if (!$mediaFile) continue;
 
-                        DB::table('portfolio_media')->insert([
-                            'project_id' => $projectId,
-                            'path' => $mediaPath,
-                            'type' => $type,
-                            'sort_order' => $mediaIndex,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
+                            $mediaPath = $mediaFile->store('portfolio/media', 'public');
+                            $mime = $mediaFile->getMimeType();
+                            $type = str_starts_with((string) $mime, 'video/') ? 'video' : 'image';
+
+                            DB::table('portfolio_media')->insert([
+                                'project_id' => $projectId,
+                                'path' => $mediaPath,
+                                'type' => $type,
+                                'sort_order' => $startOrder + $mediaIndex,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
                     }
                 }
             }
@@ -689,21 +713,39 @@ public function updateListing(Request $request, string $username): JsonResponse
         $coverPath = $existing->cover_media_path;
         $galleryPaths = $existing->gallery_json ? json_decode($existing->gallery_json, true) : [];
 
-        if ($request->hasFile('cover_files')) {
-            $newGallery = [];
-            foreach ($request->file('cover_files') as $idx => $file) {
-                if ($file) {
-                    $path = $file->store('listings/covers', 'public');
-                    if ($idx === 0) {
-                        $coverPath = $path;
-                    }
-                    $newGallery[] = $path;
+        $existingCoverPaths = [];
+        if ($request->has('existing_cover_urls')) {
+            foreach ($request->input('existing_cover_urls') as $url) {
+                if (empty($url)) continue;
+                $path = str_replace(url('storage') . '/', '', $url);
+                $path = str_replace(Storage::disk('public')->url(''), '', $path);
+                // Also handle relative /storage/ paths if sent
+                $path = str_replace('/storage/', '', $path);
+                
+                if (Storage::disk('public')->exists($path)) {
+                    $existingCoverPaths[] = $path;
                 }
             }
-            if (!empty($newGallery)) {
-                $galleryPaths = $newGallery;
+        }
+
+        $newGallery = [];
+        if ($request->hasFile('cover_files')) {
+            foreach ($request->file('cover_files') as $file) {
+                if ($file) {
+                    $newGallery[] = $file->store('listings/covers', 'public');
+                }
             }
+        }
+
+        // Combine existing and new. Priority to existing if they come first? 
+        // Actually, the frontend usually manages the order in the array.
+        $galleryPaths = array_merge($existingCoverPaths, $newGallery);
+        
+        // If we have any gallery images, the first one is the cover_media_path
+        if (!empty($galleryPaths)) {
+            $coverPath = $galleryPaths[0];
         } else if ($request->hasFile('cover_file')) {
+            // Fallback for single file upload if used
             if ($coverPath && Storage::disk('public')->exists($coverPath)) {
                 Storage::disk('public')->delete($coverPath);
             }
@@ -1129,25 +1171,15 @@ public function updateListing(Request $request, string $username): JsonResponse
                 ->first();
 
             if ($portfolio) {
-                $existingProjectIds = DB::table('portfolio_projects')
-                    ->where('portfolio_id', $portfolio->id)
-                    ->pluck('id')
-                    ->all();
-
-                if (Schema::hasTable('portfolio_media') && !empty($existingProjectIds)) {
-                    $oldMedia = DB::table('portfolio_media')
-                        ->whereIn('project_id', $existingProjectIds)
-                        ->get(['path']);
-
-                    foreach ($oldMedia as $media) {
-                        if ($media->path && Storage::disk('public')->exists($media->path)) {
-                            Storage::disk('public')->delete($media->path);
-                        }
-                    }
-
-                    DB::table('portfolio_media')->whereIn('project_id', $existingProjectIds)->delete();
-                }
-
+                // Instead of deleting everything, we will handle updates per project if possible.
+                // But the current UI sends the full list, so deleting and re-inserting is okay 
+                // ONLY IF we handle existing media correctly.
+                
+                // Collect all old project IDs to delete their media later if they are not in the new list
+                // For now, let's stick to the delete-and-reinsert pattern but fix the media loss.
+                
+                // Delete old media files that are NOT in the new existing_media list (optional but good)
+                
                 DB::table('portfolio_projects')->where('portfolio_id', $portfolio->id)->delete();
             } else {
                 $portfolioId = DB::table('portfolios')->insertGetId([
@@ -1183,24 +1215,48 @@ public function updateListing(Request $request, string $username): JsonResponse
                     'updated_at' => now(),
                 ]);
 
-                if (Schema::hasTable('portfolio_media') && !empty($files)) {
-                    foreach ($files as $mediaIndex => $mediaFile) {
-                        if (!$mediaFile) {
-                            continue;
+                if (Schema::hasTable('portfolio_media')) {
+                    // 1. Handle existing media
+                    $existingMedia = (array) ($projectInput['existing_media'] ?? []);
+                    foreach ($existingMedia as $mIdx => $mPath) {
+                        if (empty($mPath)) continue;
+                        
+                        // Ensure it's a relative path
+                        $cleanPath = str_replace(url('storage') . '/', '', $mPath);
+                        $cleanPath = str_replace(Storage::disk('public')->url(''), '', $cleanPath);
+                        $cleanPath = str_replace('/storage/', '', $cleanPath);
+
+                        if (Storage::disk('public')->exists($cleanPath)) {
+                            DB::table('portfolio_media')->insert([
+                                'project_id' => $projectId,
+                                'path' => $cleanPath,
+                                'type' => in_array(strtolower(pathinfo($cleanPath, PATHINFO_EXTENSION)), ['mp4','mov','avi','mkv','webm'], true) ? 'video' : 'image',
+                                'sort_order' => $mIdx,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
                         }
+                    }
 
-                        $mediaPath = $mediaFile->store('portfolio/media', 'public');
-                        $mime = $mediaFile->getMimeType();
-                        $type = str_starts_with((string) $mime, 'video/') ? 'video' : 'image';
+                    // 2. Handle new files
+                    if (!empty($files)) {
+                        $startOrder = count($existingMedia);
+                        foreach ($files as $mediaIndex => $mediaFile) {
+                            if (!$mediaFile) continue;
 
-                        DB::table('portfolio_media')->insert([
-                            'project_id' => $projectId,
-                            'path' => $mediaPath,
-                            'type' => $type,
-                            'sort_order' => $mediaIndex,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
+                            $mediaPath = $mediaFile->store('portfolio/media', 'public');
+                            $mime = $mediaFile->getMimeType();
+                            $type = str_starts_with((string) $mime, 'video/') ? 'video' : 'image';
+
+                            DB::table('portfolio_media')->insert([
+                                'project_id' => $projectId,
+                                'path' => $mediaPath,
+                                'type' => $type,
+                                'sort_order' => $startOrder + $mediaIndex,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
                     }
                 }
             }

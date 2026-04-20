@@ -14,6 +14,7 @@ import {
 import "../../../Darkuser.css";
 import "../../onboarding/components/OnboardingSelect.css";
 import { useNavigate, useParams } from "react-router-dom";
+import DeliverablesSection from "../components/DeliverablesSection";
 import Swal from "sweetalert2";
 
 const LISTING_TYPE = "service";
@@ -103,6 +104,9 @@ export default function CreateServiceListing({
   const [addOns, setAddOns] = useState([]);
 
   const [faqs, setFaqs] = useState([{ ...EMPTY_FAQ }]);
+  const [mainDeliverables, setMainDeliverables] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [links, setLinks] = useState([""]);
 
   const current = pkg[activeTab];
 
@@ -297,35 +301,37 @@ export default function CreateServiceListing({
         setTeamName(item?.team_name || "");
         setTags(Array.isArray(item?.tags) ? item.tags : []);
         setPkg(mappedPackages);
+        
         const normalizedAddOns = Array.isArray(details?.add_ons)
-  ? details.add_ons.map((item) => ({
-      name: item.name || "",
-      price:
-        item.price !== undefined && item.price !== null
-          ? String(item.price)
-          : "",
-      days:
-        item.days !== undefined && item.days !== null
-          ? String(item.days)
-          : "",
-    }))
-  : [];
+          ? details.add_ons.map((item) => ({
+              name: item.name || "",
+              price: item.price !== undefined && item.price !== null ? String(item.price) : "",
+              days: item.days !== undefined && item.days !== null ? String(item.days) : "",
+            }))
+          : [];
 
-if (normalizedAddOns.length > 0) {
-  setAddOn(normalizedAddOns[0]);
-  setAddOns(normalizedAddOns.slice(1));
-} else {
-  setAddOn({ ...EMPTY_ADDON });
-  setAddOns([]);
-}
-        setFaqs(
-          Array.isArray(item.faqs) && item.faqs.length
-            ? item.faqs.map((faq) => ({
-                q: faq.q || faq.question || "",
-                a: faq.a || faq.answer || "",
-              }))
-            : [{ q: "", a: "" }]
-        );
+        setAddOns(normalizedAddOns);
+        setAddOn({ ...EMPTY_ADDON });
+
+        if (Array.isArray(item.faqs) && item.faqs.length) {
+          setFaqs(item.faqs.map(f => ({ q: f.question || f.q || "", a: f.answer || f.a || "" })));
+        } else {
+          setFaqs([{ ...EMPTY_FAQ }]);
+        }
+
+        if (Array.isArray(item.links) && item.links.length) {
+          setLinks(item.links.map(l => typeof l === 'string' ? l : (l.link_url || "")));
+        } else {
+          setLinks([""]);
+        }
+
+        if (Array.isArray(item.deliverables) && item.deliverables.length) {
+          setMainDeliverables(item.deliverables);
+          setNotes(item.deliverables.map(d => d.notes || ""));
+        } else {
+          setMainDeliverables([]);
+          setNotes([]);
+        }
 
         const gallery = Array.isArray(item.gallery) ? item.gallery : [];
         if (gallery.length > 0) {
@@ -510,10 +516,15 @@ if (normalizedAddOns.length > 0) {
       team_name: sellerMode === "Team" ? teamName : "",
 
       cover_files: coverFiles.length ? coverFiles : null,
-      existing_cover_url: !coverFiles.length ? existingCoverUrl || "" : "",
+      existing_cover_urls: coverImages.filter(url => !url.startsWith('blob:')),
 
       tags,
       faqs: faqs.filter((f) => String(f.q || "").trim() || String(f.a || "").trim()),
+      links: links.filter(Boolean),
+      deliverables: mainDeliverables.map((file, index) => ({
+        file,
+        notes: notes[index] || "",
+      })),
       portfolio_projects: Array.isArray(portfolioProjects) ? portfolioProjects : [],
 
       details: {
@@ -1202,6 +1213,35 @@ if (normalizedAddOns.length > 0) {
                     listingType={LISTING_TYPE}
                     listingId={isEditMode ? listingId : null}
                     onChange={setPortfolioProjects}
+                  />
+                </div>
+
+                <div className="csl-card">
+                  <DeliverablesSection
+                    deliverables={mainDeliverables.map((file, idx) => ({
+                      file: file instanceof File ? file : null,
+                      file_name: file.file_name || file.name,
+                      file_size: file.file_size || file.size,
+                      notes: notes[idx] || "",
+                    }))}
+                    onAddDeliverable={(file) => {
+                      setMainDeliverables((p) => [...p, file]);
+                      setNotes((p) => [...p, ""]);
+                    }}
+                    onRemoveDeliverable={(idx) => {
+                      setMainDeliverables((p) => p.filter((_, i) => i !== idx));
+                      setNotes((p) => p.filter((_, i) => i !== idx));
+                    }}
+                    onUpdateDeliverableNotes={(idx, val) => {
+                      setNotes((p) => p.map((n, i) => (i === idx ? val : n)));
+                    }}
+                    onUpdateDeliverableFile={(idx, file) => {
+                      setMainDeliverables((p) => p.map((f, i) => (i === idx ? file : f)));
+                    }}
+                    links={links}
+                    onAddLink={() => setLinks((p) => [...p, ""])}
+                    onRemoveLink={(idx) => setLinks((p) => p.filter((_, i) => i !== idx))}
+                    onUpdateLink={(idx, val) => setLinks((p) => p.map((l, i) => (i === idx ? val : l)))}
                   />
                 </div>
 

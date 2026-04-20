@@ -305,16 +305,20 @@ export default function CreateWebinar({
 
         setLinks(Array.isArray(item.links) && item.links.length ? item.links : [""]);
 
-        setDeliverables(
-          Array.isArray(item.deliverables) && item.deliverables.length
-            ? item.deliverables.map((d) => ({
-                file: null,
-                notes: d.notes || "",
-                existing_file_name: d.file_name || "",
-                existing_file_url: d.file_url || "",
-              }))
-            : [{ file: null, notes: "" }]
-        );
+        if (Array.isArray(item.deliverables) && item.deliverables.length) {
+          setDeliverables(
+            item.deliverables.map((d) => ({
+              file: null,
+              notes: d.notes || "",
+              existing_file_name: d.file_name || "",
+              existing_file_url: d.file_url || "",
+              name: d.file_name,
+              size: d.file_size,
+            }))
+          );
+        } else {
+          setDeliverables([]);
+        }
 
         if (item.gallery_json) {
           try {
@@ -515,12 +519,11 @@ export default function CreateWebinar({
     faqs: faqs.filter((f) => String(f.q || "").trim() || String(f.a || "").trim()),
     links: links.map((l) => String(l || "").trim()).filter(Boolean),
 
-    deliverables: deliverables.filter(
-      (d) =>
-        d.file ||
-        String(d.notes || "").trim() ||
-        String(d.existing_file_url || "").trim()
-    ),
+    deliverables: deliverables.map(d => ({
+      file: d.file,
+      notes: d.notes || "",
+      existing_file_url: d.existing_file_url || ""
+    })),
 
     details: {
       product_type: form.productType,
@@ -1097,10 +1100,13 @@ export default function CreateWebinar({
                 {saveSuccess ? <p className="text-green-600 text-sm">{saveSuccess}</p> : null}
 
                 <DeliverablesSection
-                  mode="listing"
-                  listingType={LISTING_TYPE}
-                  deliverables={deliverables}
-                  onAddDeliverable={addDeliverable}
+                  deliverables={deliverables.map(d => ({
+                    file: d.file,
+                    notes: d.notes,
+                    name: d.file?.name || d.existing_file_name || d.name,
+                    size: d.file?.size || d.size
+                  }))}
+                  onAddDeliverable={(file) => setDeliverables([...deliverables, { file, notes: "" }])}
                   onRemoveDeliverable={removeDeliverable}
                   onUpdateDeliverableNotes={updateDeliverableNotes}
                   onUpdateDeliverableFile={updateDeliverableFile}
