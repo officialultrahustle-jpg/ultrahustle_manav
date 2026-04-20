@@ -302,7 +302,7 @@ export default function CreateServiceListing({ theme, setTheme }) {
       />
 
       <div
-        className={`pt-[85px] flex relative z-10 transition-all duration-300 ${isModalOpen ? "blur-sm pointer-events-none select-none" : ""}`}
+        className={`pt-[72px] flex relative z-10 transition-all duration-300 ${isModalOpen ? "blur-sm pointer-events-none select-none" : ""}`}
       >
         {/* ✅ SIDEBAR */}
         <Sidebar
@@ -319,7 +319,7 @@ export default function CreateServiceListing({ theme, setTheme }) {
         {/* ✅ MAIN CONTENT WRAPPER */}
         <div className="relative flex-1 min-w-5 overflow-hidden">
           {/* Scrollable Area */}
-          <div className="relative z-10 overflow-y-auto h-[calc(100vh-85px)]">
+          <div className="relative z-10 overflow-y-auto h-[calc(100vh-72px)]">
             <div className="create-service-container">
               <div className="csl-stack">
                 {/* ================= BASIC DETAILS CARD ================= */}

@@ -143,7 +143,7 @@ const ManageTeam = (props) => {
         onDropdownChange={handleDropdownChange}
       />
 
-      <div className="pt-[85px] flex relative z-10">
+      <div className="pt-[72px] flex relative z-10">
         {/* SIDEBAR */}
         <Sidebar
           expanded={sidebarOpen}
@@ -158,7 +158,7 @@ const ManageTeam = (props) => {
 
         {/* MAIN CONTENT WRAPPER */}
         <div className="relative flex-1 min-w-0 overflow-hidden">
-          <div className="relative z-10 overflow-y-auto h-[calc(100vh-85px)]">
+          <div className="relative z-10 overflow-y-auto h-[calc(100vh-72px)]">
             <main
               className={`manage-team-main p-4 md:p-6 lg:p-10 ${
                 isDropdownOpen ? "blurred" : ""
