@@ -41,6 +41,25 @@ const extractErrorMessage = (error) => {
   return "Request failed";
 };
 
+//my listings
+export const getMyListings = async () => {
+  try {
+    const res = await api.get("/api/v1/my-listings");
+    return unwrap(res);
+  } catch (err) {
+    throw new Error(extractErrorMessage(err));
+  }
+};
+
+export const getListingByUsername = async (username) => {
+  try {
+    const res = await api.get(`/api/v1/listings/${encodeURIComponent(username)}`);
+    return unwrap(res);
+  } catch (err) {
+    throw new Error(extractErrorMessage(err));
+  }
+};
+
 export const createListing = async (payload) => {
   try {
     const formData = new FormData();
@@ -88,7 +107,11 @@ export const createListing = async (payload) => {
 
     const details = payload.details || {};
 
-    if (details.price !== undefined && details.price !== null && details.price !== "") {
+    if (
+      details.price !== undefined &&
+      details.price !== null &&
+      details.price !== ""
+    ) {
       formData.append("details[price]", details.price);
     }
 
@@ -102,7 +125,10 @@ export const createListing = async (payload) => {
 
     (payload.portfolio_projects || []).forEach((project, index) => {
       formData.append(`portfolio_projects[${index}][title]`, project.title || "");
-      formData.append(`portfolio_projects[${index}][description]`, project.description || "");
+      formData.append(
+        `portfolio_projects[${index}][description]`,
+        project.description || ""
+      );
       formData.append(`portfolio_projects[${index}][cost]`, project.cost || "");
       formData.append(
         `portfolio_projects[${index}][sort_order]`,
@@ -110,7 +136,10 @@ export const createListing = async (payload) => {
       );
 
       (project.files || []).forEach((file, fileIndex) => {
-        formData.append(`portfolio_projects[${index}][files][${fileIndex}]`, file);
+        formData.append(
+          `portfolio_projects[${index}][files][${fileIndex}]`,
+          file
+        );
       });
     });
 
@@ -126,7 +155,11 @@ export const createListing = async (payload) => {
       formData.append("details[webinar_level]", details.webinar_level);
     }
 
-    if (details.ticket_price !== undefined && details.ticket_price !== null && details.ticket_price !== "") {
+    if (
+      details.ticket_price !== undefined &&
+      details.ticket_price !== null &&
+      details.ticket_price !== ""
+    ) {
       formData.append("details[ticket_price]", details.ticket_price);
     }
 
@@ -173,13 +206,22 @@ export const createListing = async (payload) => {
     (details.agenda || []).forEach((item, index) => {
       formData.append(`details[agenda][${index}][time]`, item.time || "");
       formData.append(`details[agenda][${index}][topic]`, item.topic || "");
-      formData.append(`details[agenda][${index}][description]`, item.description || "");
+      formData.append(
+        `details[agenda][${index}][description]`,
+        item.description || ""
+      );
     });
 
     (details.lessons || []).forEach((lesson, index) => {
       formData.append(`details[lessons][${index}][title]`, lesson.title || "");
-      formData.append(`details[lessons][${index}][description]`, lesson.description || "");
-      formData.append(`details[lessons][${index}][media_type]`, lesson.media_type || "");
+      formData.append(
+        `details[lessons][${index}][description]`,
+        lesson.description || ""
+      );
+      formData.append(
+        `details[lessons][${index}][media_type]`,
+        lesson.media_type || ""
+      );
       formData.append(
         `details[lessons][${index}][existing_media_url]`,
         lesson.existing_media_url || ""
@@ -190,8 +232,75 @@ export const createListing = async (payload) => {
       );
 
       if (lesson.media_file) {
-        formData.append(`details[lessons][${index}][media_file]`, lesson.media_file);
+        formData.append(
+          `details[lessons][${index}][media_file]`,
+          lesson.media_file
+        );
       }
+    });
+
+    // service
+    // service
+    (details.packages || []).forEach((pkg, index) => {
+      formData.append(
+        `details[packages][${index}][package_name]`,
+        pkg.package_name || pkg.packageName || ""
+      );
+      formData.append(
+        `details[packages][${index}][price]`,
+        pkg.price ?? ""
+      );
+      formData.append(
+        `details[packages][${index}][delivery_days]`,
+        pkg.delivery_days ?? pkg.deliveryDays ?? ""
+      );
+      formData.append(
+        `details[packages][${index}][revisions]`,
+        pkg.revisions ?? ""
+      );
+      formData.append(
+        `details[packages][${index}][scope]`,
+        pkg.scope || ""
+      );
+
+      (pkg.included || []).forEach((item, itemIndex) => {
+        formData.append(
+          `details[packages][${index}][included][${itemIndex}]`,
+          item
+        );
+      });
+
+      (pkg.how_it_works || pkg.howItWorks || []).forEach((item, itemIndex) => {
+        formData.append(
+          `details[packages][${index}][how_it_works][${itemIndex}]`,
+          item
+        );
+      });
+
+      (pkg.not_included || pkg.notIncluded || []).forEach((item, itemIndex) => {
+        formData.append(
+          `details[packages][${index}][not_included][${itemIndex}]`,
+          item
+        );
+      });
+
+      (pkg.tools_used || pkg.toolsUsed || []).forEach((item, itemIndex) => {
+        formData.append(
+          `details[packages][${index}][tools_used][${itemIndex}]`,
+          item
+        );
+      });
+
+      formData.append(
+        `details[packages][${index}][delivery_format]`,
+        pkg.delivery_format || pkg.deliveryFormat || ""
+      );
+    });
+
+    (details.add_ons || details.addOns || []).forEach((item, index) => {
+      formData.append(`details[add_ons][${index}][name]`, item.name || "");
+      formData.append(`details[add_ons][${index}][price]`, item.price ?? "");
+      formData.append(`details[add_ons][${index}][days]`, item.days ?? "");
     });
 
     const res = await api.post("/api/v1/listings", formData, {
@@ -200,25 +309,6 @@ export const createListing = async (payload) => {
       },
     });
 
-    return unwrap(res);
-  } catch (err) {
-    throw new Error(extractErrorMessage(err));
-  }
-};
-
-//my listings
-export const getMyListings = async () => {
-  try {
-    const res = await api.get("/api/v1/my-listings");
-    return unwrap(res);
-  } catch (err) {
-    throw new Error(extractErrorMessage(err));
-  }
-};
-
-export const getListingByUsername = async (username) => {
-  try {
-    const res = await api.get(`/api/v1/listings/${encodeURIComponent(username)}`);
     return unwrap(res);
   } catch (err) {
     throw new Error(extractErrorMessage(err));
@@ -318,8 +408,14 @@ export const updateListing = async (username, payload) => {
 
     (details.lessons || []).forEach((lesson, index) => {
       formData.append(`details[lessons][${index}][title]`, lesson.title || "");
-      formData.append(`details[lessons][${index}][description]`, lesson.description || "");
-      formData.append(`details[lessons][${index}][media_type]`, lesson.media_type || "");
+      formData.append(
+        `details[lessons][${index}][description]`,
+        lesson.description || ""
+      );
+      formData.append(
+        `details[lessons][${index}][media_type]`,
+        lesson.media_type || ""
+      );
       formData.append(
         `details[lessons][${index}][existing_media_url]`,
         lesson.existing_media_url || ""
@@ -330,17 +426,16 @@ export const updateListing = async (username, payload) => {
       );
 
       if (lesson.media_file) {
-        formData.append(`details[lessons][${index}][media_file]`, lesson.media_file);
+        formData.append(
+          `details[lessons][${index}][media_file]`,
+          lesson.media_file
+        );
       }
     });
 
     // webinar
-    if (details.webinar_level) {
-      formData.append("details[webinar_level]", details.webinar_level);
-    }
-
-    (details.key_outcomes || []).forEach((item, index) => {
-      formData.append(`details[key_outcomes][${index}]`, item);
+    (details.key_outcomes || []).forEach((key_outcome, index) => {
+      formData.append(`details[key_outcomes][${index}]`, key_outcome);
     });
 
     if (
@@ -380,7 +475,69 @@ export const updateListing = async (username, payload) => {
       );
     });
 
-    // portfolio for edit mode
+    // service
+    (details.packages || []).forEach((pkg, index) => {
+      formData.append(
+        `details[packages][${index}][package_name]`,
+        pkg.package_name || pkg.packageName || ""
+      );
+      formData.append(
+        `details[packages][${index}][price]`,
+        pkg.price ?? ""
+      );
+      formData.append(
+        `details[packages][${index}][delivery_days]`,
+        pkg.delivery_days ?? pkg.deliveryDays ?? ""
+      );
+      formData.append(
+        `details[packages][${index}][revisions]`,
+        pkg.revisions ?? ""
+      );
+      formData.append(
+        `details[packages][${index}][scope]`,
+        pkg.scope || ""
+      );
+
+      (pkg.included || []).forEach((item, itemIndex) => {
+        formData.append(
+          `details[packages][${index}][included][${itemIndex}]`,
+          item
+        );
+      });
+
+      (pkg.how_it_works || pkg.howItWorks || []).forEach((item, itemIndex) => {
+        formData.append(
+          `details[packages][${index}][how_it_works][${itemIndex}]`,
+          item
+        );
+      });
+
+      (pkg.not_included || pkg.notIncluded || []).forEach((item, itemIndex) => {
+        formData.append(
+          `details[packages][${index}][not_included][${itemIndex}]`,
+          item
+        );
+      });
+
+      (pkg.tools_used || pkg.toolsUsed || []).forEach((item, itemIndex) => {
+        formData.append(
+          `details[packages][${index}][tools_used][${itemIndex}]`,
+          item
+        );
+      });
+
+      formData.append(
+        `details[packages][${index}][delivery_format]`,
+        pkg.delivery_format || pkg.deliveryFormat || ""
+      );
+    });
+
+    (details.add_ons || details.addOns || []).forEach((item, index) => {
+      formData.append(`details[add_ons][${index}][name]`, item.name || "");
+      formData.append(`details[add_ons][${index}][price]`, item.price ?? "");
+      formData.append(`details[add_ons][${index}][days]`, item.days ?? "");
+    });
+
     (payload.portfolio_projects || []).forEach((project, index) => {
       formData.append(`portfolio_projects[${index}][title]`, project.title || "");
       formData.append(
