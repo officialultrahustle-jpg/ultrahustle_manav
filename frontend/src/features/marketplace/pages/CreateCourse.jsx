@@ -29,7 +29,7 @@ export default function CreateCourse({
   mode = "create",
 }) {
   const navigate = useNavigate();
-  const { username } = useParams();
+  const { listingusername } = useParams();
   const isEditMode = mode === "edit";
 
   const [categories, setCategories] = useState([]);
@@ -279,7 +279,7 @@ export default function CreateCourse({
 
   React.useEffect(() => {
     const loadListing = async () => {
-      if (!isEditMode || !username) {
+      if (!isEditMode || !listingusername) {
         setInitialLoading(false);
         return;
       }
@@ -287,24 +287,18 @@ export default function CreateCourse({
       try {
         setInitialLoading(true);
 
-        const res = await getListingByUsername(username);
-        const item = res?.listing || null;
+        const res = await getListingByUsername(listingusername);
+        const item = res?.listing || res?.data?.listing || res?.data || null;
 
         if (!item) {
-          Swal.fire({ icon: "error", title: "Not found", text: "Listing not found." });
-          return;
-        }
-
-        if (item.listing_type !== LISTING_TYPE) {
-          Swal.fire({ icon: "error", title: "Invalid listing", text: "This listing is not a course." });
-          return;
+          throw new Error("Course listing not found.");
         }
 
         setForm({
           title: item.title || "",
           category: item.category || "",
           subCategory: item.sub_category || "",
-          productType: item?.details?.product_type || "",
+          productType: item?.details?.product_type || item?.product_type || "",
           price:
             item?.price !== undefined && item?.price !== null
               ? String(item.price)
@@ -312,10 +306,10 @@ export default function CreateCourse({
                 ? String(item.details.price)
                 : "",
           shortDescription: item.short_description || "",
-          prerequisites: item.about || item?.details?.prerequisites || "",
+          prerequisites: item?.details?.prerequisites || item.about || "",
         });
 
-        setTools(Array.isArray(item?.tools) ? item.tools : []);
+        setTools(Array.isArray(item?.tools) ? item.tools : (Array.isArray(item?.details?.tools) ? item.details.tools : []));
         setCourseIncluded(
           Array.isArray(item?.details?.included) ? item.details.included : []
         );
@@ -345,10 +339,10 @@ export default function CreateCourse({
             item.deliverables.map((d) => ({
               file: null,
               notes: d.notes || "",
-              existing_file_name: d.file_name || "",
-              existing_file_url: d.file_url || "",
-              name: d.file_name,
-              size: d.file_size,
+              existing_file_name: d.file_name || d.name || "",
+              existing_file_url: d.file_url || d.url || "",
+              name: d.file_name || d.name,
+              size: d.file_size || d.size,
             }))
           );
         } else {
@@ -360,13 +354,13 @@ export default function CreateCourse({
             ? item.details.lessons.map((lesson) => ({
                 title: lesson.title || "",
                 description: lesson.description || "",
-                media: lesson.media_url
+                media: (lesson.media_url || lesson.url)
                   ? {
-                      preview: lesson.media_url,
-                      existing_url: lesson.media_url,
-                      existing_path: lesson.media_path || "",
+                      preview: lesson.media_url || lesson.url,
+                      existing_url: lesson.media_url || lesson.url,
+                      existing_path: lesson.media_path || lesson.path || "",
                       file: null,
-                      type: lesson.media_type || null,
+                      type: lesson.media_type || lesson.type || null,
                     }
                   : null,
               }))
@@ -377,7 +371,9 @@ export default function CreateCourse({
               ]
         );
 
-        if (item.gallery_json) {
+        if (Array.isArray(item.gallery) && item.gallery.length > 0) {
+          setCoverImages(item.gallery);
+        } else if (item.gallery_json) {
           try {
             const gallery = JSON.parse(item.gallery_json);
             if (Array.isArray(gallery)) {
@@ -385,19 +381,18 @@ export default function CreateCourse({
                 path.startsWith("http") ? path : `/storage/${path}`
               );
               setCoverImages(urls);
-              setCoverFiles([]); // Existing files are strings, not File objects
             }
           } catch (e) {
             console.error("Failed to parse gallery_json", e);
           }
         } else if (item.cover_media_url || item.cover_media_path) {
-          const coverUrl = item.cover_media_url || item.cover_media_path;
-          setCoverImages([coverUrl]);
+          setCoverImages([item.cover_media_url || item.cover_media_path]);
         }
 
-        if (item?.details?.preview_video_url) {
-          setExistingPreviewVideoUrl(item.details.preview_video_url);
-          setPreviewVideo(item.details.preview_video_url);
+        if (item?.details?.preview_video_url || item?.preview_video_url) {
+          const vUrl = item?.details?.preview_video_url || item?.preview_video_url;
+          setExistingPreviewVideoUrl(vUrl);
+          setPreviewVideo(vUrl);
         }
       } catch (e) {
         Swal.fire({
@@ -411,7 +406,7 @@ export default function CreateCourse({
     };
 
     loadListing();
-  }, [isEditMode, username]);
+  }, [isEditMode, listingusername]);
 
   const validateBeforeSave = () => {
     if (!String(form.title || "").trim()) return "Course title is required.";

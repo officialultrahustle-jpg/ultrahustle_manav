@@ -24,7 +24,7 @@ export default function CreateDigitalProduct({
   const TABS = ["Basic", "Standard", "Premium"];
 
   const navigate = useNavigate();
-  const { username } = useParams();
+  const { listingusername } = useParams();
 
   const isEditMode = mode === "edit";
 
@@ -422,13 +422,13 @@ export default function CreateDigitalProduct({
   };
 
   const loadListingForEdit = async () => {
-    if (!isEditMode || !username) return;
+    if (!isEditMode || !listingusername) return;
 
     try {
       setIsLoadingListing(true);
 
-      const res = await getListingByUsername(username);
-      const listing = res?.listing || res?.data || res;
+      const res = await getListingByUsername(listingusername);
+      const listing = res?.listing || res?.data?.listing || res?.data || res;
 
       if (!listing) return;
 
@@ -440,11 +440,11 @@ export default function CreateDigitalProduct({
         subCategory: listing.sub_category || "",
         shortDescription: listing.short_description || "",
         about: listing.about || "",
-        productType: listing?.details?.product_type || "",
+        productType: listing?.details?.product_type || listing?.product_type || "",
         price:
           listing?.details?.price !== undefined && listing?.details?.price !== null
             ? String(listing.details.price)
-            : "",
+            : (listing?.price !== undefined && listing?.price !== null ? String(listing.price) : ""),
       });
 
       setAiPowered(!!listing.ai_powered);
@@ -470,10 +470,10 @@ export default function CreateDigitalProduct({
           listing.deliverables.map((d) => ({
             file: null,
             notes: d.notes || "",
-            existing_file_name: d.file_name || "",
-            existing_file_url: d.file_url || "",
-            name: d.file_name,
-            size: d.file_size,
+            existing_file_name: d.file_name || d.name || "",
+            existing_file_url: d.file_url || d.url || "",
+            name: d.file_name || d.name,
+            size: d.file_size || d.size,
           }))
         );
         setNotes(listing.deliverables.map((item) => item.notes || ""));
@@ -482,16 +482,10 @@ export default function CreateDigitalProduct({
         setNotes([]);
       }
 
-      const gallery = Array.isArray(listing.gallery) ? listing.gallery : [];
-      if (gallery.length > 0) {
-        setCoverImages(gallery);
-        setCoverFiles([]);
-        setCoverSlideIdx(0);
+      if (Array.isArray(listing.gallery) && listing.gallery.length > 0) {
+        setCoverImages(listing.gallery);
       } else if (listing.cover_media_url || listing.cover_media_path) {
-        const coverUrl = listing.cover_media_url || listing.cover_media_path;
-        setCoverImages([coverUrl]);
-        setCoverFiles([]);
-        setCoverSlideIdx(0);
+        setCoverImages([listing.cover_media_url || listing.cover_media_path]);
       }
 
       const tools = Array.isArray(listing?.tools)
@@ -505,18 +499,22 @@ export default function CreateDigitalProduct({
         : [];
 
       const deliveryFormat = listing?.details?.delivery_format
-        ? String(listing.details.delivery_format).split(",").map((s) => s.trim()).filter(Boolean)
+        ? (Array.isArray(listing.details.delivery_format) 
+            ? listing.details.delivery_format 
+            : String(listing.details.delivery_format).split(",").map((s) => s.trim()).filter(Boolean))
         : [];
 
       setPkg((prev) => ({
         ...prev,
         Basic: {
           ...prev.Basic,
-          included,
-          deliveryFormat,
+          included: included,
+          deliveryFormat: deliveryFormat,
           toolsUsed: tools,
         },
       }));
+
+      if (listing?.details?.add_ons) setAddOns(listing.details.add_ons);
 
       setPortfolioProjects(
         Array.isArray(listing.portfolio_projects) ? listing.portfolio_projects : [],
@@ -527,11 +525,6 @@ export default function CreateDigitalProduct({
         icon: "error",
         title: "Load failed",
         text: error?.message || "Failed to load listing details.",
-        background: "#0b0b0b",
-        color: "#ffffff",
-        iconColor: "#CEFF1B",
-        confirmButtonColor: "#CEFF1B",
-        confirmButtonText: "<span style='color:#000;font-weight:700'>OK</span>",
       });
     } finally {
       setIsLoadingListing(false);
@@ -540,7 +533,7 @@ export default function CreateDigitalProduct({
 
   React.useEffect(() => {
     loadListingForEdit();
-  }, [isEditMode, username]);
+  }, [isEditMode, listingusername]);
 
   const buildPayload = (status = "published") => {
     const activeData = pkg[activeTab] || {};
@@ -612,7 +605,7 @@ export default function CreateDigitalProduct({
       const payload = buildPayload(status);
 
       const res = isEditMode
-        ? await updateListing(username, payload)
+        ? await updateListing(listingusername, payload)
         : await createListing(payload);
 
       Swal.fire({

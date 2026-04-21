@@ -41,7 +41,7 @@ export default function CreateServiceListing({
   mode = "create",
 }) {
   const navigate = useNavigate();
-  const { username } = useParams();
+  const { listingusername } = useParams();
   const isEditMode = mode === "edit";
 
   const [categories, setCategories] = useState([]);
@@ -182,19 +182,19 @@ export default function CreateServiceListing({
     const loadListing = async () => {
       setInitialLoading(true);
       try {
-        const item = await getListingByUsername(username);
+        const item = await getListingByUsername(listingusername);
         setListingId(item.id);
 
         setForm({
           title: item.title || "",
           category: item.category || "",
           subCategory: item.sub_category || "",
-          productType: item.details?.product_type || "",
+          productType: item.details?.product_type || item.product_type || "",
           shortDescription: item.short_description || "",
           about: item.about || "",
         });
 
-        if (item.tags) setTags(item.tags);
+        if (item.tags) setTags(Array.isArray(item.tags) ? item.tags : []);
         if (item.ai_powered !== undefined) setAiPowered(!!item.ai_powered);
         if (item.seller_mode) setSellerMode(item.seller_mode);
         if (item.team_name) setTeamName(item.team_name);
@@ -206,9 +206,17 @@ export default function CreateServiceListing({
             if (tab) {
               newPkg[tab] = {
                 ...EMPTY_PACKAGE,
-                ...p,
                 enabled: true,
-                packageName: p.package_name || tab,
+                packageName: p.package_name || p.packageName || tab,
+                price: p.price || "",
+                deliveryDays: p.delivery_days || p.deliveryDays || "",
+                revisions: p.revisions !== undefined ? p.revisions : "",
+                scope: p.scope || "",
+                included: Array.isArray(p.included) ? p.included : [],
+                howItWorks: Array.isArray(p.how_it_works) ? p.how_it_works : (Array.isArray(p.howItWorks) ? p.howItWorks : []),
+                notIncluded: Array.isArray(p.not_included) ? p.not_included : (Array.isArray(p.notIncluded) ? p.notIncluded : []),
+                toolsUsed: Array.isArray(p.tools_used) ? p.tools_used : (Array.isArray(p.toolsUsed) ? p.toolsUsed : []),
+                deliveryFormat: p.delivery_format || p.deliveryFormat || "",
               };
             }
           });
@@ -222,7 +230,7 @@ export default function CreateServiceListing({
           const loaded = item.portfolio_projects.map(p => ({
             title: p.title || "",
             description: p.description || "",
-            cost: p.cost || "",
+            cost: p.cost || p.cost_cents || "",
             image: p.media?.[0]?.url || p.cover_media_url || null,
             existingMedia: p.media || []
           }));
@@ -235,7 +243,9 @@ export default function CreateServiceListing({
         }
 
         if (item.gallery) {
-          setCoverImages(item.gallery);
+          setCoverImages(Array.isArray(item.gallery) ? item.gallery : []);
+        } else if (item.cover_media_url) {
+          setCoverImages([item.cover_media_url]);
         }
       } catch (e) {
         Swal.fire({
@@ -249,7 +259,7 @@ export default function CreateServiceListing({
     };
 
     loadListing();
-  }, [isEditMode, username]);
+  }, [isEditMode, listingusername]);
 
   // Handlers
   const setFormField = (key, value) => {
@@ -402,7 +412,7 @@ export default function CreateServiceListing({
       const payload = buildPayload(status);
       
       const res = isEditMode 
-        ? await updateListing(username, payload)
+        ? await updateListing(listingusername, payload)
         : await createListing(payload);
 
       if (isAutoSave) {
@@ -413,7 +423,7 @@ export default function CreateServiceListing({
           title: status === "draft" ? "Draft Saved" : "Published!",
           text: status === "draft" ? "Your listing has been saved as a draft." : "Your service is now live.",
         }).then(() => {
-          if (status === "published") navigate(`/marketplace/service/${res.slug || username}?published=true`);
+          if (status === "published") navigate(`/marketplace/service/${res.slug || listingusername}?published=true`);
         });
       }
     } catch (e) {

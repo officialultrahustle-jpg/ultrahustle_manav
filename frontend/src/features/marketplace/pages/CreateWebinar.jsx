@@ -227,24 +227,10 @@ export default function CreateWebinar({
         setSaveError("");
 
         const res = await getListingByUsername(username);
-        const item = res?.listing || null;
+        const item = res?.listing || res?.data?.listing || res?.data || null;
 
         if (!item) {
-          Swal.fire({
-            icon: "error",
-            title: "Not found",
-            text: "Listing not found.",
-          });
-          return;
-        }
-
-        if (item.listing_type !== LISTING_TYPE) {
-          Swal.fire({
-            icon: "error",
-            title: "Invalid listing",
-            text: "This listing is not a webinar.",
-          });
-          return;
+          throw new Error("Webinar listing not found.");
         }
 
         setForm({
@@ -256,31 +242,33 @@ export default function CreateWebinar({
         });
 
         setAiPowered(Boolean(item.ai_powered));
-        setTools(Array.isArray(item?.details?.tools) ? item.details.tools : []);
+        setTools(Array.isArray(item?.details?.tools) ? item.details.tools : (Array.isArray(item?.tools) ? item.tools : []));
         setKeyOutcomes(
           Array.isArray(item?.details?.key_outcomes) ? item.details.key_outcomes : []
         );
         setLearningPoints(
           Array.isArray(item?.details?.learning_points)
             ? item.details.learning_points
-            : Array.isArray(item?.details?.what_you_will_learn)
+            : (Array.isArray(item?.details?.what_you_will_learn)
               ? item.details.what_you_will_learn
-              : []
+              : [])
         );
         setLanguages(
           Array.isArray(item?.details?.languages) ? item.details.languages : []
         );
 
-        setAgenda(
-          Array.isArray(item?.details?.agenda) && item.details.agenda.length
-            ? item.details.agenda.map((ag, index) => ({
-                id: index + 1,
-                time: ag.time || "",
-                topic: ag.topic || "",
-                description: ag.description || "",
-              }))
-            : [{ id: 1, time: "", topic: "", description: "" }]
-        );
+        if (Array.isArray(item?.details?.agenda) && item.details.agenda.length) {
+          setAgenda(
+            item.details.agenda.map((ag, index) => ({
+              id: index + 1,
+              time: ag.time || "",
+              topic: ag.topic || "",
+              description: ag.description || "",
+            }))
+          );
+        } else {
+          setAgenda([{ id: 1, time: "", topic: "", description: "" }]);
+        }
 
         setSchedule({
           date: item?.details?.schedule_date || "",
@@ -291,7 +279,7 @@ export default function CreateWebinar({
           ticketPrice:
             item?.details?.ticket_price !== undefined && item?.details?.ticket_price !== null
               ? String(item.details.ticket_price)
-              : "",
+              : (item?.price !== undefined && item?.price !== null ? String(item.price) : ""),
         });
 
         setFaqs(
@@ -310,17 +298,19 @@ export default function CreateWebinar({
             item.deliverables.map((d) => ({
               file: null,
               notes: d.notes || "",
-              existing_file_name: d.file_name || "",
-              existing_file_url: d.file_url || "",
-              name: d.file_name,
-              size: d.file_size,
+              existing_file_name: d.file_name || d.name || "",
+              existing_file_url: d.file_url || d.url || "",
+              name: d.file_name || d.name,
+              size: d.file_size || d.size,
             }))
           );
         } else {
           setDeliverables([]);
         }
 
-        if (item.gallery_json) {
+        if (Array.isArray(item.gallery) && item.gallery.length > 0) {
+          setCoverImages(item.gallery);
+        } else if (item.gallery_json) {
           try {
             const gallery = JSON.parse(item.gallery_json);
             if (Array.isArray(gallery)) {
@@ -328,14 +318,12 @@ export default function CreateWebinar({
                 path.startsWith("http") ? path : `/storage/${path}`
               );
               setCoverImages(urls);
-              setCoverFiles([]);
             }
           } catch (e) {
             console.error("Failed to parse gallery_json", e);
           }
         } else if (item.cover_media_url || item.cover_media_path) {
-          const coverUrl = item.cover_media_url || item.cover_media_path;
-          setCoverImages([coverUrl]);
+          setCoverImages([item.cover_media_url || item.cover_media_path]);
         }
       } catch (e) {
         Swal.fire({
