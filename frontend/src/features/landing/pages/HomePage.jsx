@@ -537,6 +537,7 @@ function PlatformFeaturesSection({ containerRef }) {
         target: sectionRef,
         offset: ["start start", "end end"],
         container: containerRef,
+        layoutEffect: false,
     });
 
     // Translate the row further to ensure the last card is fully revealed.
@@ -546,7 +547,16 @@ function PlatformFeaturesSection({ containerRef }) {
     return (
         <section className="pf-sticky-wrapper" ref={sectionRef}>
             <div className="pf-sticky-container">
-                <div className="pf-shell">
+                {/* Background Layer (matching HowItWorks) */}
+                <div className="hiw-bg-layer">
+                    <div
+                        className="hiw-bg-img hiw-bg-img--active"
+                        style={{ backgroundImage: "url('/every-feature.png')" }}
+                    />
+                    <div className="hiw-bg-overlay" />
+                </div>
+
+                <div className="pf-shell relative z-10 w-full">
                     <motion.div
                         className="pf-header"
                         initial={{ opacity: 0, y: 56 }}
