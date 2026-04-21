@@ -511,11 +511,27 @@ const ServiceListing = ({ theme, setTheme }) => {
                                         <div className="tsl-header-actions">
                                             <button className="tsl-icon-btn" title="Share" onClick={() => {
                                                 const url = window.location.href;
-                                                navigator.clipboard.writeText(url).then(() => {
-                                                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Link copied to clipboard!', showConfirmButton: false, timer: 1500, background: '#0b0b0b', color: '#fff' });
-                                                }).catch(() => {
-                                                    alert("Copied to clipboard: " + url);
-                                                });
+                                                const showSuccess = () => Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Link copied to clipboard!', showConfirmButton: false, timer: 1500, background: '#0b0b0b', color: '#fff' });
+                                                
+                                                if (navigator.clipboard && window.isSecureContext) {
+                                                    navigator.clipboard.writeText(url).then(showSuccess).catch(() => alert("Copied to clipboard: " + url));
+                                                } else {
+                                                    // Fallback for non-HTTPS environments
+                                                    const textArea = document.createElement("textarea");
+                                                    textArea.value = url;
+                                                    textArea.style.position = "fixed";
+                                                    textArea.style.left = "-9999px";
+                                                    document.body.appendChild(textArea);
+                                                    textArea.focus();
+                                                    textArea.select();
+                                                    try {
+                                                        document.execCommand('copy');
+                                                        showSuccess();
+                                                    } catch (err) {
+                                                        alert("Copied to clipboard: " + url);
+                                                    }
+                                                    document.body.removeChild(textArea);
+                                                }
                                             }}>
                                                 <Share2 size={20} />
                                             </button>
