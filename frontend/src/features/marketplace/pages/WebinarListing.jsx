@@ -370,7 +370,14 @@ const WebinarListing = ({ theme, setTheme }) => {
           <div className="overflow-y-auto h-[calc(100vh-72px)]">
             <div className={`cl-page ${theme}`}>
               <div className="cl-header">
-                <h1 className="cl-title">{listing?.title || "Webinar"}</h1>
+                <h1 className="cl-title">{listing?.title || "Webinar"}
+                  {listing?.ai_powered && (
+                    <span className="csl-ai-pill active" style={{ marginLeft: 12, display: 'inline-flex' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                      AI Powered
+                    </span>
+                  )}
+                </h1>
                 <div className="cl-header-actions">
                   <button
                     className="cl-icon-btn"
