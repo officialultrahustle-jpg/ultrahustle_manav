@@ -170,11 +170,11 @@ const CourseListing = ({ theme, setTheme }) => {
         setFaqData(normalizeFaqs(faqs));
         setRecommendedListings(Array.isArray(recommended) ? recommended : []);
         setMoreFromUserListings(Array.isArray(moreFromUser) ? moreFromUser : []);
-        
+
         // Assume listingData might contain enrollment status (has_purchased, is_enrolled)
         if (listingData?.is_enrolled || listingData?.has_purchased) {
-            setIsEnrolled(true);
-            setEnrolledOrderId(listingData?.order_id || listingData?.id);
+          setIsEnrolled(true);
+          setEnrolledOrderId(listingData?.order_id || listingData?.id);
         }
 
       } catch (err) {
@@ -206,16 +206,16 @@ const CourseListing = ({ theme, setTheme }) => {
         { listing_id: listing?.id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       const orderId = res.data?.order_id || res.data?.id || listing?.id;
       navigate(`/dashboard/client/orders/${orderId}/course`);
     } catch (err) {
       console.error("Failed to enroll:", err);
       // If unauthorized, go to login
       if (err.response?.status === 401) {
-          navigate("/login");
+        navigate("/login");
       } else {
-          alert("Failed to enroll. Please try again.");
+        alert("Failed to enroll. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -239,9 +239,9 @@ const CourseListing = ({ theme, setTheme }) => {
     } catch (err) {
       console.error("Failed to add to cart:", err);
       if (err.response?.status === 401) {
-          navigate("/login");
+        navigate("/login");
       } else {
-          alert("Failed to add to cart. Please try again.");
+        alert("Failed to add to cart. Please try again.");
       }
     }
   };
@@ -313,9 +313,9 @@ const CourseListing = ({ theme, setTheme }) => {
     creatorUsername: item?.creator_username || "",
     image: toMediaUrl(
       item?.cover_media_url ||
-        item?.cover_media_path ||
-        item?.cover ||
-        "",
+      item?.cover_media_path ||
+      item?.cover ||
+      "",
     ),
     title: item?.title || "Untitled Listing",
     type:
@@ -435,7 +435,7 @@ const CourseListing = ({ theme, setTheme }) => {
               <div className="cl-header">
                 <h1 className="cl-title">{listing?.title || "Course"}</h1>
                 <div className="cl-header-actions">
-                  <button 
+                  <button
                     className="cl-icon-btn"
                     onClick={() => {
                       const shareUrl = window.location.href;
@@ -455,7 +455,7 @@ const CourseListing = ({ theme, setTheme }) => {
                   >
                     <Share2 size={20} />
                   </button>
-                  <button 
+                  <button
                     className="cl-icon-btn"
                     onClick={() => {
                       Swal.fire({
@@ -575,12 +575,14 @@ const CourseListing = ({ theme, setTheme }) => {
                   <div className="cl-profile-mini-card">
                     <div className="cl-pmc-left">
                       <div className="cl-pmc-avatar-wrap">
-                        {creator?.profile_image_url ? (
-                            <img src={creator.profile_image_url} alt={creator?.name} className="cl-pmc-avatar-img" />
+                        {creator?.avatar_url ? (
+                          <img
+                            src={creator?.avatar_url}
+                            alt={creator?.full_name || "Profile"}
+                            className="cl-pmc-avatar-bg"
+                          />
                         ) : (
-                            <div className="cl-pmc-avatar-bg">
-                                <span className="cl-pmc-avatar-initials">{creator?.name?.charAt(0) || "C"}</span>
-                            </div>
+                          <div className="cl-pmc-avatar-bg"></div>
                         )}
                         <div className="cl-pmc-status-dot"></div>
                       </div>
@@ -689,15 +691,15 @@ const CourseListing = ({ theme, setTheme }) => {
                         {courseDetails.lessons.map((lesson, idx) => (
                           <div key={idx} style={{ display: 'flex', gap: '16px', background: 'var(--cl-bg-secondary)', padding: '16px', borderRadius: '12px' }}>
                             <div style={{ width: '120px', height: '80px', flexShrink: 0, borderRadius: '8px', overflow: 'hidden', background: '#333' }}>
-                                {lesson.media_path ? (
-                                    lesson.media_type === 'video' ? (
-                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}><Play size={32} /></div>
-                                    ) : (
-                                        <img src={`/storage/${lesson.media_path}`} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    )
+                              {lesson.media_path ? (
+                                lesson.media_type === 'video' ? (
+                                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}><Play size={32} /></div>
                                 ) : (
-                                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>Lesson {idx + 1}</div>
-                                )}
+                                  <img src={`/storage/${lesson.media_path}`} alt={lesson.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                )
+                              ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>Lesson {idx + 1}</div>
+                              )}
                             </div>
                             <div style={{ flex: 1 }}>
                               <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '600' }}>{idx + 1}. {lesson.title}</h3>
@@ -740,7 +742,7 @@ const CourseListing = ({ theme, setTheme }) => {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="cl-pricing-actions" style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {isEnrolled ? (
                         <button onClick={() => navigate(`/dashboard/client/orders/${enrolledOrderId}/course`)} className="cl-btn-primary" style={{ width: '100%', padding: '14px', background: '#CEFF1B', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' }}>Go to Course</button>
@@ -957,8 +959,8 @@ const CourseListing = ({ theme, setTheme }) => {
                         <div key={star} className="rating-bar-row">
                           <span className="rating-label">{star}</span>
                           <div className="rating-bar">
-                            <div 
-                              className="rating-bar-fill" 
+                            <div
+                              className="rating-bar-fill"
                               style={{ width: star === 5 ? "85%" : star === 4 ? "10%" : "2%" }}
                             ></div>
                           </div>
@@ -982,7 +984,7 @@ const CourseListing = ({ theme, setTheme }) => {
                         <span className="review-date">2 weeks ago</span>
                       </div>
                       <p className="review-text">
-                        Excellent course! The information was top-notch and it saved me hours of research. 
+                        Excellent course! The information was top-notch and it saved me hours of research.
                         Highly recommended for anyone looking for professional insights.
                       </p>
                     </div>
@@ -1000,7 +1002,7 @@ const CourseListing = ({ theme, setTheme }) => {
                         <span className="review-date">1 month ago</span>
                       </div>
                       <p className="review-text">
-                        Great value for money. Some minor issues with the connection but the 
+                        Great value for money. Some minor issues with the connection but the
                         creator was very helpful in resolving them.
                       </p>
                     </div>
@@ -1060,58 +1062,58 @@ const CourseListing = ({ theme, setTheme }) => {
               </div>
 
               {moreFromCreator.length > 0 && (
-                  <div className="cl-listing-container" style={{ marginTop: "40px" }}>
-                    <h2 className="cl-sectionTitle">
-                      More from {creator?.full_name || creator?.name || username}
-                    </h2>
-                    <div className="cl-mp-grid" ref={moreFromCreatorGridRef}>
-                      {moreFromCreator.map((p, idx) => (
-                        <article className="cl-mp-card" key={p.id || idx}>
-                          <div className="cl-mp-imgWrap">
-                            <img className="cl-mp-img" src={p.image} alt={p.title} />
-                          </div>
-                          <div className="cl-mp-cardBody">
-                            <div className="cl-mp-topLine">
-                              <div className="cl-mp-user">
-                                <div className="cl-mp-avatar"></div>
-                                <span className="cl-mp-userName">
-                                  {p.creatorUsername || p.listingUsername}
-                                </span>
-                              </div>
-                            </div>
-                            <p className="cl-mp-desc">{p.title}</p>
-                            <div className="cl-mp-bottomRow">
-                              <div className="cl-mp-price">Price: {p.price}</div>
-                              <button
-                                className="cl-mp-cta"
-                                type="button"
-                                onClick={() =>
-                                  navigate(`/${listingTypeToRouteSlug(p.listingType)}/${p.listingUsername}`)
-                                }
-                              >
-                                Know More
-                                <ChevronRight size={12} className="cl-mp-ctaIcon" />
-                              </button>
+                <div className="cl-listing-container" style={{ marginTop: "40px" }}>
+                  <h2 className="cl-sectionTitle">
+                    More from {creator?.full_name || creator?.name || username}
+                  </h2>
+                  <div className="cl-mp-grid" ref={moreFromCreatorGridRef}>
+                    {moreFromCreator.map((p, idx) => (
+                      <article className="cl-mp-card" key={p.id || idx}>
+                        <div className="cl-mp-imgWrap">
+                          <img className="cl-mp-img" src={p.image} alt={p.title} />
+                        </div>
+                        <div className="cl-mp-cardBody">
+                          <div className="cl-mp-topLine">
+                            <div className="cl-mp-user">
+                              <div className="cl-mp-avatar"></div>
+                              <span className="cl-mp-userName">
+                                {p.creatorUsername || p.listingUsername}
+                              </span>
                             </div>
                           </div>
-                        </article>
-                      ))}
-                    </div>
-                    <button
-                      className="cl-mp-floatArrow left"
-                      type="button"
-                      onClick={() => scrollGridRef(moreFromCreatorGridRef, "left")}
-                    >
-                      <ChevronLeft size={24} />
-                    </button>
-                    <button
-                      className="cl-mp-floatArrow right"
-                      type="button"
-                      onClick={() => scrollGridRef(moreFromCreatorGridRef, "right")}
-                    >
-                      <ChevronRight size={24} />
-                    </button>
+                          <p className="cl-mp-desc">{p.title}</p>
+                          <div className="cl-mp-bottomRow">
+                            <div className="cl-mp-price">Price: {p.price}</div>
+                            <button
+                              className="cl-mp-cta"
+                              type="button"
+                              onClick={() =>
+                                navigate(`/${listingTypeToRouteSlug(p.listingType)}/${p.listingUsername}`)
+                              }
+                            >
+                              Know More
+                              <ChevronRight size={12} className="cl-mp-ctaIcon" />
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
                   </div>
+                  <button
+                    className="cl-mp-floatArrow left"
+                    type="button"
+                    onClick={() => scrollGridRef(moreFromCreatorGridRef, "left")}
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                  <button
+                    className="cl-mp-floatArrow right"
+                    type="button"
+                    onClick={() => scrollGridRef(moreFromCreatorGridRef, "right")}
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                </div>
               )}
             </div>
           </div>
