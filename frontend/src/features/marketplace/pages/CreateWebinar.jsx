@@ -493,10 +493,10 @@ export default function CreateWebinar({
     seller_mode: "Solo",
     team_name: "",
 
-    cover_files: coverFiles,
-    existing_cover_urls: coverImages.filter(
-      (url) => typeof url === "string" && !url.startsWith("blob:")
-    ),
+    cover_files: coverFiles.filter((f) => f instanceof File),
+    existing_cover_urls: coverFiles
+      .filter((f) => typeof f === "string")
+      .map((url) => url.replace(/.*\/storage\//, "")),
 
     faqs: faqs.filter((f) => String(f.q || "").trim() || String(f.a || "").trim()),
     links: links.map((l) => String(l || "").trim()).filter(Boolean),
@@ -511,7 +511,7 @@ export default function CreateWebinar({
       .map((d) => ({
         file: d.file || null,
         notes: d.notes || "",
-        existing_file_url: d.existing_file_url || "",
+        existing_file_url: (d.existing_file_url || "").replace(/.*\/storage\//, ""),
       })),
 
     details: {

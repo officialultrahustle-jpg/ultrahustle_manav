@@ -39,6 +39,7 @@ const EMPTY_FAQ = { q: "", a: "" };
 const EMPTY_ADDON = { name: "", price: "", days: "" };
 const EMPTY_PORTFOLIO = {
   image: null,
+  imagePreview: "",
   title: "",
   description: "",
   cost: "",
@@ -47,23 +48,16 @@ const EMPTY_PORTFOLIO = {
 
 const normalizeStringArray = (value) => {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => String(item || "").trim())
-    .filter(Boolean);
+  return value.map((item) => String(item || "").trim()).filter(Boolean);
 };
 
 const normalizeDeliveryFormat = (value) => {
   if (Array.isArray(value)) {
     return value.map((v) => String(v || "").trim()).filter(Boolean);
   }
-
   if (typeof value === "string") {
-    return value
-      .split(",")
-      .map((v) => v.trim())
-      .filter(Boolean);
+    return value.split(",").map((v) => v.trim()).filter(Boolean);
   }
-
   return [];
 };
 
@@ -107,6 +101,7 @@ const normalizePortfolioItems = (projects) => {
           ? String(p.cost_cents)
           : "",
     image: p?.media?.[0]?.url || p?.cover_media_url || null,
+    imagePreview: "",
     existingMedia: Array.isArray(p?.media) ? p.media : [],
   }));
 
@@ -198,13 +193,7 @@ export default function CreateServiceListing({
   const current = pkg[activeTab];
 
   React.useEffect(() => {
-    const shouldLockScroll = Boolean(isModalOpen);
-    if (shouldLockScroll) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
+    document.body.style.overflow = isModalOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -350,13 +339,24 @@ export default function CreateServiceListing({
         setFaqs(normalizeFaqs(item?.faqs));
         setPortfolioItems(normalizePortfolioItems(item?.portfolio_projects));
 
-        if (Array.isArray(item?.gallery) && item.gallery.length) {
-          setCoverImages(item.gallery);
-        } else if (item?.cover_media_url) {
-          setCoverImages([item.cover_media_url]);
-        } else {
-          setCoverImages([]);
+        const existingUrls = [];
+        if (item?.gallery_json) {
+          try {
+            const gallery = JSON.parse(item.gallery_json);
+            if (Array.isArray(gallery)) {
+              gallery.forEach((path) => {
+                existingUrls.push(path.startsWith("http") ? path : `/storage/${path}`);
+              });
+            }
+          } catch (e) {
+            console.error("Failed to parse gallery_json", e);
+          }
+        } else if (item?.cover_media_url || item?.cover_media_path) {
+          existingUrls.push(item.cover_media_url || item.cover_media_path);
         }
+
+        setCoverImages(existingUrls);
+        setCoverFiles(existingUrls);
       } catch (e) {
         Swal.fire({
           icon: "error",
@@ -387,7 +387,9 @@ export default function CreateServiceListing({
     if (!clean) return;
 
     setPkg((prev) => {
-      const currentList = Array.isArray(prev[activeTab][key]) ? prev[activeTab][key] : [];
+      const currentList = Array.isArray(prev[activeTab][key])
+        ? prev[activeTab][key]
+        : [];
       if (currentList.length >= limit) return prev;
       if (currentList.some((x) => x.toLowerCase() === clean.toLowerCase())) return prev;
 
@@ -469,29 +471,15 @@ export default function CreateServiceListing({
     const fileList = Array.from(files || []);
     if (!fileList.length) return;
 
-    const previewUrls = fileList.map((file) => URL.createObjectURL(file));
     setCoverFiles((prev) => [...prev, ...fileList]);
-    setCoverImages((prev) => [...prev, ...previewUrls]);
+    const urls = fileList.map((f) => URL.createObjectURL(f));
+    setCoverImages((prev) => [...prev, ...urls]);
     setCoverSlideIdx(0);
-    setUploadStep(null);
   };
 
   const removeCoverImage = (idx) => {
     setCoverImages((prev) => prev.filter((_, i) => i !== idx));
-    setCoverFiles((prev) => {
-      const next = [...prev];
-      const blobUrl = coverImages[idx];
-      if (typeof blobUrl === "string" && blobUrl.startsWith("blob:")) {
-        const fileIndex = prev.findIndex((file) => {
-          const tempUrl = URL.createObjectURL(file);
-          const match = tempUrl === blobUrl;
-          URL.revokeObjectURL(tempUrl);
-          return match;
-        });
-        if (fileIndex > -1) next.splice(fileIndex, 1);
-      }
-      return next;
-    });
+    setCoverFiles((prev) => prev.filter((_, i) => i !== idx));
     setCoverSlideIdx((prev) => (prev > 0 ? prev - 1 : 0));
   };
 
@@ -508,6 +496,17 @@ export default function CreateServiceListing({
       },
     ]);
     setAddOn({ ...EMPTY_ADDON });
+  };
+
+  const editAddOn = (idx) => {
+    const item = addOns[idx];
+    if (!item) return;
+    setAddOn({
+      name: item.name || "",
+      price: item.price || "",
+      days: item.days || "",
+    });
+    setAddOns((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const removeAddOn = (idx) => {
@@ -606,10 +605,10 @@ export default function CreateServiceListing({
           files: p.image instanceof File ? [p.image] : [],
           existing_media: p.existingMedia || [],
         })),
-      cover_files: coverFiles,
-      existing_cover_urls: coverImages.filter(
-        (img) => typeof img === "string" && !img.startsWith("blob:")
-      ),
+      cover_files: coverFiles.filter((f) => f instanceof File),
+      existing_cover_urls: coverFiles
+        .filter((f) => typeof f === "string")
+        .map((url) => url.replace(/.*\/storage\//, "")),
     };
   };
 
@@ -646,7 +645,12 @@ export default function CreateServiceListing({
 
       Swal.fire({
         icon: "success",
-        title: status === "draft" ? "Draft Saved" : isEditMode ? "Service Updated" : "Service Created",
+        title:
+          status === "draft"
+            ? "Draft Saved"
+            : isEditMode
+              ? "Service Updated"
+              : "Service Created",
         text:
           status === "draft"
             ? "Your listing has been saved as a draft."
@@ -849,14 +853,15 @@ export default function CreateServiceListing({
                   <div className="csl-field mb-6">
                     <div className="flex justify-between items-center mb-2">
                       <label className="csl-label !mb-0">
-                        Short Description <span className="text-red-500">*</span>
+                        Short Description (Min 30 characters) <span className="text-red-500">*</span>
                       </label>
                       <span className="text-xs text-gray-500">
                         {form.shortDescription.length}/300
                       </span>
                     </div>
                     <textarea
-                      className={`csl-textarea h-24 ${validationErrors.shortDescription ? "error-border" : ""}`}
+                      className={`csl-textarea h-24 ${validationErrors.shortDescription ? "error-border" : ""
+                        }`}
                       placeholder="Brief summary shown in search results"
                       value={form.shortDescription}
                       maxLength={300}
@@ -867,12 +872,13 @@ export default function CreateServiceListing({
                   <div className="csl-field mb-6">
                     <div className="flex justify-between items-center mb-2">
                       <label className="csl-label !mb-0">
-                        About This Service <span className="text-red-500">*</span>
+                        About This Service (Min 100 characters) <span className="text-red-500">*</span>
                       </label>
                       <span className="text-xs text-gray-500">{form.about.length}/3000</span>
                     </div>
                     <textarea
-                      className={`csl-textarea h-48 ${validationErrors.about ? "error-border" : ""}`}
+                      className={`csl-textarea h-48 ${validationErrors.about ? "error-border" : ""
+                        }`}
                       placeholder="Full detailed description"
                       value={form.about}
                       maxLength={3000}
@@ -888,8 +894,8 @@ export default function CreateServiceListing({
                         key={m}
                         type="button"
                         className={`flex-1 py-3 rounded-xl border transition-all ${sellerMode === m
-                            ? "bg-[#CEFF1B] border-black text-black font-bold"
-                            : "border-gray-200 text-gray-500 hover:text-black hover:border-black"
+                          ? "bg-[#CEFF1B] border-black text-black font-bold"
+                          : "border-gray-200 text-gray-500 hover:text-black hover:border-black"
                           }`}
                         onClick={() => setSellerMode(m)}
                       >
@@ -989,13 +995,13 @@ export default function CreateServiceListing({
 
                 <div className="csl-card">
                   <div className="flex gap-2 mb-5">
-                    {TABS.map((tab, idx) => (
+                    {TABS.map((tab) => (
                       <button
                         key={tab}
                         type="button"
                         className={`px-5 py-3 rounded-xl border font-semibold ${activeTab === tab
-                            ? "bg-[#CEFF1B] text-black border-black"
-                            : "border-gray-200 text-gray-600"
+                          ? "bg-[#CEFF1B] text-black border-black"
+                          : "border-gray-200 text-gray-600"
                           }`}
                         onClick={() => setActiveTab(tab)}
                       >
@@ -1168,6 +1174,9 @@ export default function CreateServiceListing({
                           <span>
                             {item.name} | ₹{item.price || 0} | {item.days || 0} day(s)
                           </span>
+                          <button type="button" onClick={() => editAddOn(idx)}>
+                            Edit
+                          </button>
                           <button type="button" onClick={() => removeAddOn(idx)}>
                             ×
                           </button>
@@ -1201,12 +1210,9 @@ export default function CreateServiceListing({
                           />
                         </div>
 
-                        {(item.imagePreview || item.image) ? (
+                        {item.imagePreview || item.image ? (
                           <img
-                            src={
-                              item.imagePreview ||
-                              (typeof item.image === "string" ? item.image : null)
-                            }
+                            src={item.imagePreview || (typeof item.image === "string" ? item.image : "")}
                             alt={`portfolio-${idx}`}
                             className="w-full h-40 object-cover rounded-xl mb-4"
                           />
@@ -1306,8 +1312,8 @@ export default function CreateServiceListing({
                     type="button"
                     disabled={savingStatus !== null}
                     className={`px-6 py-3 rounded-xl font-bold ${savingStatus !== null
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-gray-200 text-black"
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-gray-200 text-black"
                       }`}
                     onClick={() => handleSaveListing("draft")}
                   >
@@ -1318,8 +1324,8 @@ export default function CreateServiceListing({
                     type="button"
                     disabled={savingStatus !== null}
                     className={`px-6 py-3 rounded-xl font-bold ${savingStatus !== null
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-[#CEFF1B] text-black"
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-[#CEFF1B] text-black"
                       }`}
                     onClick={() => handleSaveListing("published")}
                   >
@@ -1362,7 +1368,10 @@ export default function CreateServiceListing({
                   accept="image/*,video/*"
                   multiple
                   className="hidden"
-                  onChange={(e) => handleCoverFileChange(e.target.files)}
+                  onChange={(e) => {
+                    handleCoverFileChange(e.target.files);
+                    setUploadStep(null);
+                  }}
                 />
               </div>
             </div>

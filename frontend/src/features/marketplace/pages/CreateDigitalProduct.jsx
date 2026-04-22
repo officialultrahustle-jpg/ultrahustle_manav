@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./CreateDigitalProduct.css";
 import UserNavbar from "../../../components/layout/UserNavbar";
@@ -15,19 +15,31 @@ import {
 import DeliverablesSection from "../components/DeliverablesSection";
 import Swal from "sweetalert2";
 
+const LISTING_TYPE = "digital_product";
+const LISTING_TYPE_SLUG = "digital-product";
+const STANDARD_FORMATS = [
+  "PDF",
+  "JPG",
+  "JPEG",
+  "PSD",
+  "ZIP",
+  "MP4",
+  "MOV",
+  "PNG",
+  "SVG",
+  "FIG",
+  "NOTION",
+  "DOCX",
+  "XLSX",
+];
+
 export default function CreateDigitalProduct({
   mode = "create",
   theme,
   setTheme,
 }) {
-  const LISTING_TYPE_SLUG = "digital-product";
-  const TABS = ["Basic", "Standard", "Premium"];
-  const STANDARD_FORMATS = ["PDF", "JPG", "JPEG", "PSD", "ZIP", "MP4", "MOV", "PNG", "SVG", "FIG", "NOTION", "DOCX", "XLSX"];
-
-
   const navigate = useNavigate();
   const { listingusername } = useParams();
-
   const isEditMode = mode === "edit";
 
   const [categories, setCategories] = useState([]);
@@ -37,23 +49,21 @@ export default function CreateDigitalProduct({
   const [isLoadingListing, setIsLoadingListing] = useState(false);
   const [editingListingId, setEditingListingId] = useState(null);
 
-  const [deliveryFormatInput, setDeliveryFormatInput] = useState("");
-  const [isDragging, setIsDragging] = useState(false);
-
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [activeSetting, setActiveSetting] = useState("basic");
+  const [uploadStep, setUploadStep] = useState(null);
+  const isModalOpen = uploadStep === "grid" || uploadStep === "success";
 
-  React.useEffect(() => {
-    setSidebarOpen(true);
-    setShowSettings(false);
-  }, []);
-
-  const handleSectionChange = (id) => {
-    setActiveSetting(id);
-  };
+  const [savingStatus, setSavingStatus] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [aiPowered, setAiPowered] = useState(false);
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState([]);
+  const [deliveryFormatInput, setDeliveryFormatInput] = useState("");
+  const [includedInput, setIncludedInput] = useState("");
+  const [toolsInput, setToolsInput] = useState("");
 
   const [form, setForm] = useState({
     title: "",
@@ -65,7 +75,59 @@ export default function CreateDigitalProduct({
     price: "",
   });
 
-  const setFormField = (key, value) => setForm((p) => ({ ...p, [key]: value }));
+  const [digitalDetails, setDigitalDetails] = useState({
+    included: [],
+    deliveryFormat: [],
+    toolsUsed: [],
+  });
+
+  const [coverImages, setCoverImages] = useState([]);
+  const [coverFiles, setCoverFiles] = useState([]);
+  const [coverSlideIdx, setCoverSlideIdx] = useState(0);
+
+  const [mainDeliverables, setMainDeliverables] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [links, setLinks] = useState([""]);
+  const [faqs, setFaqs] = useState([{ q: "", a: "" }]);
+
+  const [portfolioProjects, setPortfolioProjects] = useState([]);
+
+  const deliverableFileRef = useRef(null);
+  const coverFileRef = useRef(null);
+
+  React.useEffect(() => {
+    setSidebarOpen(true);
+    setShowSettings(false);
+  }, []);
+
+  const handleSectionChange = (id) => {
+    setActiveSetting(id);
+  };
+
+  const setFormField = (key, value) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const normalizeTextArray = (value) => {
+    if (!Array.isArray(value)) return [];
+    return value
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+  };
+
+  const normalizeDeliveryFormat = (value) => {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item || "").trim()).filter(Boolean);
+    }
+
+    if (typeof value === "string") {
+      return value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  };
 
   const loadCategories = async () => {
     try {
@@ -131,9 +193,6 @@ export default function CreateDigitalProduct({
     loadProductTypes(form.category, form.subCategory);
   }, [form.category, form.subCategory]);
 
-  const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState([]);
-
   const addTag = () => {
     const clean = tagInput.trim();
     if (!clean) return;
@@ -141,11 +200,12 @@ export default function CreateDigitalProduct({
       setTagInput("");
       return;
     }
-    setTags((p) => [...p, clean]);
+    setTags((prev) => [...prev, clean]);
     setTagInput("");
   };
 
-  const removeTag = (idx) => setTags((p) => p.filter((_, i) => i !== idx));
+  const removeTag = (idx) =>
+    setTags((prev) => prev.filter((_, i) => i !== idx));
 
   const onTagKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -154,158 +214,90 @@ export default function CreateDigitalProduct({
     }
   };
 
-  const [activeTab, setActiveTab] = useState("Basic");
-  const [uploadStep, setUploadStep] = useState(null);
-  const isModalOpen = uploadStep === "grid" || uploadStep === "success";
-
-  const [pkg, setPkg] = useState({
-    Basic: {
-      packageName: "",
-      price: "",
-      deliveryDays: "",
-      revisions: "",
-      scope: "",
-      included: [],
-      howItWorks: [],
-      notIncluded: [],
-      toolsUsed: [],
-      deliveryFormat: [],
-    },
-    Standard: {
-      packageName: "",
-      price: "",
-      deliveryDays: "",
-      revisions: "",
-      scope: "",
-      included: [],
-      howItWorks: [],
-      notIncluded: [],
-      toolsUsed: [],
-      deliveryFormat: [],
-    },
-    Premium: {
-      packageName: "",
-      price: "",
-      deliveryDays: "",
-      revisions: "",
-      scope: "",
-      included: [],
-      howItWorks: [],
-      notIncluded: [],
-      toolsUsed: [],
-      deliveryFormat: [],
-    },
-  });
-
-  const current = pkg[activeTab];
-
-  const setPkgField = (key, value) => {
-    setPkg((p) => ({
-      ...p,
-      [activeTab]: { ...p[activeTab], [key]: value },
-    }));
-  };
-
-  const addToList = (key, value) => {
-    const v = value.trim();
-    if (!v) return;
-    setPkg((p) => ({
-      ...p,
-      [activeTab]: { ...p[activeTab], [key]: [...p[activeTab][key], v] },
-    }));
-  };
-
-  const removeFromList = (key, idx) => {
-    setPkg((p) => ({
-      ...p,
-      [activeTab]: {
-        ...p[activeTab],
-        [key]: p[activeTab][key].filter((_, i) => i !== idx),
-      },
-    }));
-  };
-
-  const [includedInput, setIncludedInput] = useState("");
-  const [howInput, setHowInput] = useState("");
-  const [notInput, setNotInput] = useState("");
-  const [toolsInput, setToolsInput] = useState("");
-
-  const onEnterAdd = (e, fn) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      fn();
-    }
-  };
-
   const addIncluded = () => {
-    addToList("included", includedInput);
+    const value = includedInput.trim();
+    if (!value) return;
+
+    setDigitalDetails((prev) => {
+      if (prev.included.some((x) => x.toLowerCase() === value.toLowerCase())) {
+        return prev;
+      }
+      return {
+        ...prev,
+        included: [...prev.included, value],
+      };
+    });
+
     setIncludedInput("");
   };
 
-  const addHow = () => {
-    addToList("howItWorks", howInput);
-    setHowInput("");
-  };
-
-  const addNot = () => {
-    addToList("notIncluded", notInput);
-    setNotInput("");
+  const removeIncluded = (idx) => {
+    setDigitalDetails((prev) => ({
+      ...prev,
+      included: prev.included.filter((_, i) => i !== idx),
+    }));
   };
 
   const addTool = () => {
-    const v = toolsInput.trim();
-    if (!v) return;
+    const value = toolsInput.trim();
+    if (!value) return;
 
-    if (
-      (current.toolsUsed || []).some((t) => t.toLowerCase() === v.toLowerCase())
-    ) {
-      setToolsInput("");
-      return;
-    }
+    setDigitalDetails((prev) => {
+      if (prev.toolsUsed.some((x) => x.toLowerCase() === value.toLowerCase())) {
+        return prev;
+      }
+      if (prev.toolsUsed.length >= 10) return prev;
 
-    if ((current.toolsUsed || []).length >= 10) return;
+      return {
+        ...prev,
+        toolsUsed: [...prev.toolsUsed, value],
+      };
+    });
 
-    setPkg((p) => ({
-      ...p,
-      [activeTab]: {
-        ...p[activeTab],
-        toolsUsed: [...(p[activeTab].toolsUsed || []), v],
-      },
-    }));
     setToolsInput("");
   };
 
-  const removeTool = (idx) => removeFromList("toolsUsed", idx);
+  const removeTool = (idx) => {
+    setDigitalDetails((prev) => ({
+      ...prev,
+      toolsUsed: prev.toolsUsed.filter((_, i) => i !== idx),
+    }));
+  };
 
-  const fileRef = useRef(null);
-  const deliverableFileRef = useRef(null);
+  const addDeliveryFormat = (forcedValue = null) => {
+    const value = String(forcedValue ?? deliveryFormatInput).trim();
+    if (!value) return;
 
-  const [addOn, setAddOn] = useState({
-    name: "",
-    price: "",
-    days: "",
-  });
+    setDigitalDetails((prev) => {
+      if (
+        prev.deliveryFormat.some((x) => x.toLowerCase() === value.toLowerCase())
+      ) {
+        return prev;
+      }
 
-  const [addOns, setAddOns] = useState([]);
-  const [coverImages, setCoverImages] = useState([]);
-  const [coverFiles, setCoverFiles] = useState([]);
-  const [coverSlideIdx, setCoverSlideIdx] = useState(0);
-  const [savingStatus, setSavingStatus] = useState(null); // null | "draft" | "published"
-  const [portfolioProjects, setPortfolioProjects] = useState([]);
+      return {
+        ...prev,
+        deliveryFormat: [...prev.deliveryFormat, value],
+      };
+    });
 
-  const [mainDeliverables, setMainDeliverables] = useState([]);
-  const [notes, setNotes] = useState([""]);
-  const [links, setLinks] = useState([""]);
+    if (!forcedValue) setDeliveryFormatInput("");
+  };
+
+  const removeDeliveryFormat = (idx) => {
+    setDigitalDetails((prev) => ({
+      ...prev,
+      deliveryFormat: prev.deliveryFormat.filter((_, i) => i !== idx),
+    }));
+  };
 
   const handleMainDeliverablesChange = (e) => {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    if (!files.length) return;
+
     setMainDeliverables((prev) => [...prev, ...files]);
-    setNotes((prev) => {
-      const updated = [...prev];
-      while (updated.length < mainDeliverables.length + files.length) updated.push("");
-      return updated;
-    });
+    setNotes((prev) => [...prev, ...Array(files.length).fill("")]);
+
     if (e.target) e.target.value = "";
   };
 
@@ -314,113 +306,78 @@ export default function CreateDigitalProduct({
     setNotes((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const addMoreDeliverables = () => deliverableFileRef.current?.click();
+  const updateNoteField = (idx, value) => {
+    setNotes((prev) => prev.map((item, i) => (i === idx ? value : item)));
+  };
 
-  const addNoteField = () => setNotes((p) => [...p, ""]);
-  const updateNoteField = (idx, value) =>
-    setNotes((p) => p.map((item, i) => (i === idx ? value : item)));
-
-  const addLinkField = () => setLinks((p) => [...p, ""]);
+  const addLinkField = () => setLinks((prev) => [...prev, ""]);
   const updateLinkField = (idx, value) =>
-    setLinks((p) => p.map((item, i) => (i === idx ? value : item)));
+    setLinks((prev) => prev.map((item, i) => (i === idx ? value : item)));
+  const removeLinkField = (idx) =>
+    setLinks((prev) => prev.filter((_, i) => i !== idx));
 
-  // Delivery Format as tag list (per product protocol)
-  const addDeliveryFormat = () => {
-    const v = deliveryFormatInput.trim();
-    if (!v) return;
-    const current_df = pkg[activeTab].deliveryFormat || [];
-    if (current_df.some((t) => t.toLowerCase() === v.toLowerCase())) {
-      setDeliveryFormatInput("");
-      return;
-    }
-    setPkg((p) => ({
-      ...p,
-      [activeTab]: {
-        ...p[activeTab],
-        deliveryFormat: [...current_df, v],
-      },
-    }));
-    setDeliveryFormatInput("");
-  };
-
-  const removeDeliveryFormat = (idx) => {
-    setPkg((p) => ({
-      ...p,
-      [activeTab]: {
-        ...p[activeTab],
-        deliveryFormat: (p[activeTab].deliveryFormat || []).filter((_, i) => i !== idx),
-      },
-    }));
-  };
-
-  // Drag-and-drop handlers for main deliverables
-  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = () => setIsDragging(false);
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files || []);
-    if (files.length === 0) return;
-    setMainDeliverables((prev) => [...prev, ...files]);
-    setNotes((prev) => {
-      const updated = [...prev];
-      while (updated.length < mainDeliverables.length + files.length) updated.push("");
-      return updated;
-    });
-  };
-
-  const addNewAddOn = () => {
-    if (!addOn.name) return;
-    setAddOns((p) => [...p, addOn]);
-    setAddOn({ name: "", price: "", days: "" });
-  };
-
-  const removeAddOn = (idx) => {
-    setAddOns((p) => p.filter((_, i) => i !== idx));
-  };
-
-  const applyCoverFiles = (files) => {
-    if (!files || !files.length) return;
-    setCoverFiles(files);
-    const readers = files.map(
-      (file) =>
-        new Promise((resolve) => {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result);
-          r.readAsDataURL(file);
-        }),
-    );
-    Promise.all(readers).then((urls) => {
-      setCoverImages(urls);
-      setCoverSlideIdx(0);
-    });
-  };
-
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    applyCoverFiles(files);
-  };
-
-  const [faqs, setFaqs] = useState([
-    {
-      q: "",
-      a: "",
-    },
-  ]);
-
-  const addFaq = () => {
-    setFaqs((p) => [...p, { q: "", a: "" }]);
-  };
+  const addFaq = () => setFaqs((prev) => [...prev, { q: "", a: "" }]);
 
   const updateFaq = (idx, key, value) => {
-    setFaqs((p) =>
-      p.map((item, i) => (i === idx ? { ...item, [key]: value } : item)),
+    setFaqs((prev) =>
+      prev.map((item, i) => (i === idx ? { ...item, [key]: value } : item))
     );
   };
 
   const removeFaq = (idx) => {
-    setFaqs((p) => p.filter((_, i) => i !== idx));
+    if (faqs.length === 1) return;
+    setFaqs((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files || []);
+    if (!files.length) return;
+
+    setMainDeliverables((prev) => [...prev, ...files]);
+    setNotes((prev) => [...prev, ...Array(files.length).fill("")]);
+  };
+
+  const applyCoverFiles = async (files, append = false) => {
+    const fileList = Array.from(files || []);
+    if (!fileList.length) return;
+
+    const mergedFiles = append ? [...coverFiles, ...fileList] : fileList;
+    const limitedFiles = mergedFiles.slice(0, 9);
+
+    const previews = await Promise.all(
+      limitedFiles.map(
+        (file) =>
+          new Promise((resolve) => {
+            if (!(file instanceof File)) {
+              resolve(file);
+              return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(file);
+          })
+      )
+    );
+
+    setCoverFiles(limitedFiles);
+    setCoverImages(previews);
+    setCoverSlideIdx(0);
+  };
+
+  const removeCoverImage = (idx) => {
+    setCoverImages((prev) => prev.filter((_, i) => i !== idx));
+    setCoverFiles((prev) => prev.filter((_, i) => i !== idx));
+    setCoverSlideIdx((prev) => (prev > 0 ? prev - 1 : 0));
   };
 
   const loadListingForEdit = async () => {
@@ -442,11 +399,15 @@ export default function CreateDigitalProduct({
         subCategory: listing.sub_category || "",
         shortDescription: listing.short_description || "",
         about: listing.about || "",
-        productType: listing?.details?.product_type || listing?.product_type || "",
+        productType:
+          listing?.details?.product_type || listing?.product_type || "",
         price:
-          listing?.details?.price !== undefined && listing?.details?.price !== null
+          listing?.details?.price !== undefined &&
+            listing?.details?.price !== null
             ? String(listing.details.price)
-            : (listing?.price !== undefined && listing?.price !== null ? String(listing.price) : ""),
+            : listing?.price !== undefined && listing?.price !== null
+              ? String(listing.price)
+              : "",
       });
 
       setAiPowered(!!listing.ai_powered);
@@ -458,13 +419,13 @@ export default function CreateDigitalProduct({
             q: item.q || item.question || "",
             a: item.a || item.answer || "",
           }))
-          : [{ q: "", a: "" }],
+          : [{ q: "", a: "" }]
       );
 
       setLinks(
         Array.isArray(listing.links) && listing.links.length
           ? listing.links
-          : [""],
+          : [""]
       );
 
       if (Array.isArray(listing.deliverables) && listing.deliverables.length) {
@@ -486,8 +447,13 @@ export default function CreateDigitalProduct({
 
       if (Array.isArray(listing.gallery) && listing.gallery.length > 0) {
         setCoverImages(listing.gallery);
+        setCoverFiles([]);
       } else if (listing.cover_media_url || listing.cover_media_path) {
         setCoverImages([listing.cover_media_url || listing.cover_media_path]);
+        setCoverFiles([]);
+      } else {
+        setCoverImages([]);
+        setCoverFiles([]);
       }
 
       const tools = Array.isArray(listing?.tools)
@@ -500,26 +466,20 @@ export default function CreateDigitalProduct({
         ? listing.details.included
         : [];
 
-      const deliveryFormat = listing?.details?.delivery_format
-        ? (Array.isArray(listing.details.delivery_format)
-          ? listing.details.delivery_format
-          : String(listing.details.delivery_format).split(",").map((s) => s.trim()).filter(Boolean))
-        : [];
+      const deliveryFormat = normalizeDeliveryFormat(
+        listing?.details?.delivery_format
+      );
 
-      setPkg((prev) => ({
-        ...prev,
-        Basic: {
-          ...prev.Basic,
-          included: included,
-          deliveryFormat: deliveryFormat,
-          toolsUsed: tools,
-        },
-      }));
-
-      if (listing?.details?.add_ons) setAddOns(listing.details.add_ons);
+      setDigitalDetails({
+        included: normalizeTextArray(included),
+        deliveryFormat,
+        toolsUsed: normalizeTextArray(tools),
+      });
 
       setPortfolioProjects(
-        Array.isArray(listing.portfolio_projects) ? listing.portfolio_projects : [],
+        Array.isArray(listing.portfolio_projects)
+          ? listing.portfolio_projects
+          : []
       );
     } catch (error) {
       console.error("Failed to load listing", error);
@@ -538,22 +498,8 @@ export default function CreateDigitalProduct({
   }, [isEditMode, listingusername]);
 
   const buildPayload = (status = "published") => {
-    const activeData = pkg[activeTab] || {};
-
-    const allTools = Array.from(
-      new Set(
-        [
-          ...(pkg.Basic?.toolsUsed || []),
-          ...(pkg.Standard?.toolsUsed || []),
-          ...(pkg.Premium?.toolsUsed || []),
-        ]
-          .map((item) => String(item).trim())
-          .filter(Boolean),
-      ),
-    );
-
     return {
-      listing_type: "digital_product",
+      listing_type: LISTING_TYPE,
       status,
       title: form.title.trim(),
       category: form.category || "",
@@ -562,6 +508,9 @@ export default function CreateDigitalProduct({
       about: form.about || "",
       ai_powered: aiPowered,
       cover_files: coverFiles.length ? coverFiles : null,
+      existing_cover_urls: coverImages.filter(
+        (img) => typeof img === "string" && !img.startsWith("data:")
+      ),
       tags: tags.filter(Boolean),
       faqs: faqs
         .map((item) => ({
@@ -571,16 +520,17 @@ export default function CreateDigitalProduct({
         .filter((item) => item.q || item.a),
       links: links.map((item) => item.trim()).filter(Boolean),
       deliverables: mainDeliverables.map((d, index) => ({
-        file: d instanceof File ? d : (d.file instanceof File ? d.file : null),
-        notes: notes[index] || (typeof d === 'object' ? d.notes : "") || "",
-        existing_file_url: d.existing_file_url || d.file_url || ""
+        file: d instanceof File ? d : d?.file instanceof File ? d.file : null,
+        notes:
+          notes[index] || (typeof d === "object" ? d.notes : "") || "",
+        existing_file_url: d.existing_file_url || d.file_url || "",
       })),
       details: {
         product_type: form.productType || "",
         price: form.price || "",
-        included: (activeData.included || []).filter(Boolean),
-        delivery_format: (activeData.deliveryFormat || []).join(", "),
-        tools: allTools,
+        included: digitalDetails.included.filter(Boolean),
+        delivery_format: digitalDetails.deliveryFormat.join(", "),
+        tools: digitalDetails.toolsUsed.filter(Boolean),
       },
       portfolio_projects: portfolioProjects,
     };
@@ -596,7 +546,8 @@ export default function CreateDigitalProduct({
         color: "#ffffff",
         iconColor: "#CEFF1B",
         confirmButtonColor: "#CEFF1B",
-        confirmButtonText: "<span style='color:#000;font-weight:700'>OK</span>",
+        confirmButtonText:
+          "<span style='color:#000;font-weight:700'>OK</span>",
       });
       return;
     }
@@ -612,20 +563,25 @@ export default function CreateDigitalProduct({
 
       Swal.fire({
         icon: "success",
-        title: status === "draft" ? "Draft Saved!" : (isEditMode ? "Updated!" : "Published!"),
-        text: status === "draft"
-          ? "Your listing has been saved to your drafts."
-          : (res?.message || (isEditMode ? "Listing updated successfully" : "Your product is now live!")),
+        title:
+          status === "draft"
+            ? "Draft Saved"
+            : isEditMode
+              ? "Digital Product Updated"
+              : "Digital Product Created",
+        text:
+          status === "draft"
+            ? "Your listing has been saved as a draft."
+            : res?.message ||
+            (isEditMode
+              ? "Listing updated successfully."
+              : "Your product is now live."),
         background: "#0b0b0b",
         color: "#ffffff",
         iconColor: "#CEFF1B",
         confirmButtonColor: "#CEFF1B",
-        confirmButtonText: `<span style="color:#000;font-weight:700">${status === "draft" ? "OK" : "Go to My Listings"}</span>`,
-        customClass: {
-          popup: "swal-brand-popup",
-          title: "swal-brand-title",
-          confirmButton: "swal-brand-confirm",
-        },
+        confirmButtonText: `<span style="color:#000;font-weight:700">${status === "draft" ? "OK" : "Go to My Listings"
+          }</span>`,
       }).then((result) => {
         if (result.isConfirmed && status !== "draft") {
           navigate("/my-listings");
@@ -640,7 +596,8 @@ export default function CreateDigitalProduct({
         color: "#ffffff",
         iconColor: "#ff4444",
         confirmButtonColor: "#CEFF1B",
-        confirmButtonText: "<span style='color:#000;font-weight:700'>Try Again</span>",
+        confirmButtonText:
+          "<span style='color:#000;font-weight:700'>Try Again</span>",
       });
     } finally {
       setSavingStatus(null);
@@ -692,17 +649,7 @@ export default function CreateDigitalProduct({
                     </div>
 
                     <div className="csl-ai">
-                      <span
-                        className={`csl-ai-pill ${aiPowered ? "active" : ""}`}
-                      >
-                        <svg
-                          width="15"
-                          height="15"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                        >
-                          <path d="M7 2L9 6.81l4.89 2L9 10.81 7 15.62l-2-4.81-4.81-2 4.81-2L7 2zM17.5 15l1.25 3.01 3 1.25-3 1.25-1.25 3-1.25-3-3-1.25 3-1.25L17.5 15z" />
-                        </svg>
+                      <span className={`csl-ai-pill ${aiPowered ? "active" : ""}`}>
                         Ai Powered
                       </span>
                       <label className="csl-switch">
@@ -716,11 +663,11 @@ export default function CreateDigitalProduct({
                     </div>
                   </div>
 
-                  {isLoadingListing && (
+                  {isLoadingListing ? (
                     <div className="mb-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600">
                       Loading listing details...
                     </div>
-                  )}
+                  ) : null}
 
                   <h2 className="csl-section">Basic Details</h2>
 
@@ -750,11 +697,19 @@ export default function CreateDigitalProduct({
                     />
                   </div>
 
+                  <div className="csl-field mt-2">
+                    <label className="csl-label">About</label>
+                    <textarea
+                      className="csl-textarea"
+                      placeholder="About the product"
+                      value={form.about}
+                      onChange={(e) => setFormField("about", e.target.value)}
+                    />
+                  </div>
+
                   <div className="csl-grid2">
                     <div className="csl-field">
-                      <label className="csl-label csl-titleLabel">
-                        Category
-                      </label>
+                      <label className="csl-label csl-titleLabel">Category</label>
                       <div className="csl-selectWrap">
                         <CustomSelect
                           value={form.category}
@@ -832,29 +787,21 @@ export default function CreateDigitalProduct({
                   </div>
 
                   <div className="csl-field">
-                    <label className="csl-label mt-4">
-                      Tags (multi-select)
-                    </label>
-
+                    <label className="csl-label mt-4">Tags</label>
                     <div className="csl-tagsRow">
                       <input
                         className="csl-input csl-tagInput"
-                        placeholder="eg., type a tag and press Enter"
+                        placeholder="type a tag and press Enter"
                         value={tagInput}
                         onChange={(e) => setTagInput(e.target.value)}
                         onKeyDown={onTagKeyDown}
                       />
-
-                      <button
-                        type="button"
-                        className="csl-addBtn"
-                        onClick={addTag}
-                      >
+                      <button type="button" className="csl-addBtn" onClick={addTag}>
                         + Add
                       </button>
                     </div>
 
-                    {tags.length > 0 && (
+                    {tags.length > 0 ? (
                       <div className="csl-chips">
                         {tags.map((t, idx) => (
                           <div className="csl-chip" key={`${t}-${idx}`}>
@@ -863,21 +810,13 @@ export default function CreateDigitalProduct({
                               type="button"
                               className="csl-chipX"
                               onClick={() => removeTag(idx)}
-                              aria-label="Remove tag"
                             >
                               ×
                             </button>
                           </div>
                         ))}
-                        <button
-                          className="csl-clear-all"
-                          onClick={() => setTags([])}
-                          title="Clear all"
-                        >
-                          ×
-                        </button>
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="sp-field mt-4">
@@ -887,25 +826,21 @@ export default function CreateDigitalProduct({
                         className="sp-input"
                         value={toolsInput}
                         onChange={(e) => setToolsInput(e.target.value)}
-                        onKeyDown={(e) => onEnterAdd(e, addTool)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addTool();
+                          }
+                        }}
                         placeholder="eg., Figma, Notion"
                       />
-                      <button
-                        type="button"
-                        className="sp-addBtnRight"
-                        onClick={addTool}
-                      >
+                      <button type="button" className="sp-addBtnRight" onClick={addTool}>
                         + Add
                       </button>
                     </div>
-                    <div className="sp-hint">You can add 10 tools</div>
-
-                    {!!current.toolsUsed?.length && (
-                      <div
-                        className="sp-chipRow"
-                        style={{ position: "relative" }}
-                      >
-                        {current.toolsUsed.map((x, idx) => (
+                    {digitalDetails.toolsUsed.length > 0 ? (
+                      <div className="sp-chipRow">
+                        {digitalDetails.toolsUsed.map((x, idx) => (
                           <div className="sp-chip" key={`${x}-${idx}`}>
                             {x}
                             <button
@@ -917,220 +852,193 @@ export default function CreateDigitalProduct({
                             </button>
                           </div>
                         ))}
-                        <button
-                          className="csl-clear-all"
-                          onClick={() =>
-                            setPkg((p) => ({
-                              ...p,
-                              [activeTab]: { ...p[activeTab], toolsUsed: [] },
-                            }))
-                          }
-                          title="Clear all"
-                        >
-                          ×
-                        </button>
                       </div>
-                    )}
+                    ) : null}
+                  </div>
 
-                    <div className="sp-field mt-4">
-                      <label className="sp-label">What's included</label>
-                      {!!current.included?.length && (
-                        <div className="included-bullet-wrap">
-                          <ul className="included-bullet-list">
-                            {current.included.map((x, idx) => (
-                              <li key={`${x}-${idx}`} className="included-bullet-item">
-                                <span className="included-bullet-dot">•</span>
-                                <span className="included-bullet-text">{x}</span>
-                                <button
-                                  type="button"
-                                  className="included-bullet-del"
-                                  onClick={() => removeFromList("included", idx)}
-                                  aria-label="Remove"
-                                >
-                                  ×
-                                </button>
-                              </li>
-                            ))}
-                          </ul>
-
-                          <div className="sp-toolsRow mt-3">
-                            <input
-                              className="sp-input"
-                              value={includedInput}
-                              onChange={(e) => setIncludedInput(e.target.value)}
-                              onKeyDown={(e) => onEnterAdd(e, addIncluded)}
-                              placeholder="eg., Source file, Commercial License"
-                            />
-                            <button
-                              type="button"
-                              className="sp-addBtnRight"
-                              onClick={addIncluded}
-                            >
-                              + Add
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {!current.included?.length && (
-                        <div className="sp-toolsRow">
-                          <input
-                            className="sp-input"
-                            value={includedInput}
-                            onChange={(e) => setIncludedInput(e.target.value)}
-                            onKeyDown={(e) => onEnterAdd(e, addIncluded)}
-                            placeholder="eg., Source file, Commercial License"
-                          />
-                          <button
-                            type="button"
-                            className="sp-addBtnRight"
-                            onClick={addIncluded}
-                          >
-                            + Add
-                          </button>
-                        </div>
-                      )}
+                  <div className="sp-field mt-4">
+                    <label className="sp-label">What's included</label>
+                    <div className="sp-toolsRow">
+                      <input
+                        className="sp-input"
+                        value={includedInput}
+                        onChange={(e) => setIncludedInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addIncluded();
+                          }
+                        }}
+                        placeholder="eg., Source file, Commercial License"
+                      />
+                      <button
+                        type="button"
+                        className="sp-addBtnRight"
+                        onClick={addIncluded}
+                      >
+                        + Add
+                      </button>
                     </div>
 
-                    <div className="sp-field mt-4">
-                      <label className="sp-label">Delivery format</label>
-                      <div className="sp-toolsRow">
-                        <div className="csl-selectWrap flex-1">
-                          <CustomSelect
-                            value={""}
-                            onChange={(val) => {
-                              if (!val) return;
-                              const current_df = pkg[activeTab].deliveryFormat || [];
-                              if (!current_df.includes(val)) {
-                                setPkg(p => ({
-                                  ...p,
-                                  [activeTab]: {
-                                    ...p[activeTab],
-                                    deliveryFormat: [...current_df, val]
-                                  }
-                                }));
-                              }
-                            }}
-                            options={STANDARD_FORMATS}
-                            placeholder="Select format..."
-                          />
-                        </div>
-                        <input
-                          className="sp-input ml-2"
-                          value={deliveryFormatInput}
-                          onChange={(e) => setDeliveryFormatInput(e.target.value)}
-                          onKeyDown={(e) => onEnterAdd(e, addDeliveryFormat)}
-                          placeholder="or type custom format..."
-                        />
-                        <button
-                          type="button"
-                          className="sp-addBtnRight"
-                          onClick={addDeliveryFormat}
-                        >
-                          + Add
-                        </button>
-                      </div>
-                      <div className="sp-hint">Tag the format buyers will receive</div>
+                    {digitalDetails.included.length > 0 ? (
+                      <ul className="included-bullet-list">
+                        {digitalDetails.included.map((x, idx) => (
+                          <li key={`${x}-${idx}`} className="included-bullet-item">
+                            <span className="included-bullet-dot">•</span>
+                            <span className="included-bullet-text">{x}</span>
+                            <button
+                              type="button"
+                              className="included-bullet-del"
+                              onClick={() => removeIncluded(idx)}
+                            >
+                              ×
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
 
-                      {!!(current.deliveryFormat || []).length && (
-                        <div className="sp-chipRow" style={{ position: "relative" }}>
-                          {(current.deliveryFormat || []).map((x, idx) => (
-                            <div className="sp-chip" key={`${x}-${idx}`}>
-                              {x}
+                  <div className="sp-field mt-4">
+                    <label className="sp-label">Delivery format</label>
+
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {STANDARD_FORMATS.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          className="px-3 py-2 rounded-lg border border-[#CEFF1B] text-sm"
+                          onClick={() => addDeliveryFormat(item)}
+                        >
+                          {item}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="sp-toolsRow">
+                      <input
+                        className="sp-input"
+                        value={deliveryFormatInput}
+                        onChange={(e) => setDeliveryFormatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            addDeliveryFormat();
+                          }
+                        }}
+                        placeholder="Add custom format"
+                      />
+                      <button
+                        type="button"
+                        className="sp-addBtnRight"
+                        onClick={() => addDeliveryFormat()}
+                      >
+                        + Add
+                      </button>
+                    </div>
+
+                    {digitalDetails.deliveryFormat.length > 0 ? (
+                      <div className="sp-chipRow">
+                        {digitalDetails.deliveryFormat.map((x, idx) => (
+                          <div className="sp-chip" key={`${x}-${idx}`}>
+                            {x}
+                            <button
+                              className="sp-chipX"
+                              type="button"
+                              onClick={() => removeDeliveryFormat(idx)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="am-card">
+                  <h3 className="am-title" style={{ marginTop: 0 }}>Cover Pages</h3>
+                  <p className="csl-label" style={{ marginBottom: "8px", opacity: 0.7 }}>
+                    Upload multiple cover images. Existing images stay unless you remove them.
+                  </p>
+
+                  <div className="am-uploadBox">
+                    {coverImages.length > 0 ? (
+                      <>
+                        <div
+                          className="am-cover-slider"
+                          style={{ position: "relative", width: "100%" }}
+                        >
+                          <img
+                            src={coverImages[coverSlideIdx]}
+                            alt={`cover ${coverSlideIdx + 1}`}
+                            className="am-preview"
+                            style={{ display: "block" }}
+                          />
+
+                          {coverImages.length > 1 ? (
+                            <>
                               <button
-                                className="sp-chipX"
                                 type="button"
-                                onClick={() => removeDeliveryFormat(idx)}
+                                className="am-slide-btn left"
+                                onClick={() =>
+                                  setCoverSlideIdx(
+                                    (p) => (p - 1 + coverImages.length) % coverImages.length
+                                  )
+                                }
+                              >
+                                &#8249;
+                              </button>
+                              <button
+                                type="button"
+                                className="am-slide-btn right"
+                                onClick={() =>
+                                  setCoverSlideIdx((p) => (p + 1) % coverImages.length)
+                                }
+                              >
+                                &#8250;
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+
+                        <div className="am-thumb-strip">
+                          {coverImages.map((img, i) => (
+                            <div key={i} className="relative">
+                              <img
+                                src={img}
+                                alt={`thumb ${i + 1}`}
+                                className={`am-thumb ${i === coverSlideIdx ? "active" : ""}`}
+                                onClick={() => setCoverSlideIdx(i)}
+                              />
+                              <button
+                                type="button"
+                                className="am-remove-slot"
+                                onClick={() => removeCoverImage(i)}
                               >
                                 ×
                               </button>
                             </div>
                           ))}
-                          <button
-                            className="csl-clear-all"
-                            onClick={() =>
-                              setPkg((p) => ({
-                                ...p,
-                                [activeTab]: { ...p[activeTab], deliveryFormat: [] },
-                              }))
-                            }
-                            title="Clear all"
-                          >
-                            ×
-                          </button>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                <div className="am-card">
-                  <h3 className="am-title" style={{ marginTop: 0 }}>
-                    Cover Pages
-                  </h3>
-                  <p className="csl-label" style={{ marginBottom: '8px', opacity: .7 }}>Upload up to 9 images — first image is the primary cover.</p>
-                  <div className="am-uploadBox">
-                    {coverImages.length > 0 ? (
-                      <>
-                        {/* Slider Preview */}
-                        <div className="am-cover-slider" style={{ position: 'relative', width: '100%' }}>
-                          <img
-                            src={coverImages[coverSlideIdx]}
-                            alt={`cover ${coverSlideIdx + 1}`}
-                            className="am-preview"
-                            style={{ display: 'block' }}
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            type="button"
+                            className="am-changeBtn"
+                            onClick={() => coverFileRef.current?.click()}
+                          >
+                            Change / Add More
+                          </button>
+                          <input
+                            ref={coverFileRef}
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => applyCoverFiles(e.target.files, true)}
                           />
-                          {coverImages.length > 1 && (
-                            <>
-                              <button
-                                type="button"
-                                className="am-slide-btn left"
-                                onClick={() => setCoverSlideIdx((p) => (p - 1 + coverImages.length) % coverImages.length)}
-                              >&#8249;</button>
-                              <button
-                                type="button"
-                                className="am-slide-btn right"
-                                onClick={() => setCoverSlideIdx((p) => (p + 1) % coverImages.length)}
-                              >&#8250;</button>
-                              <div className="am-slide-dots">
-                                {coverImages.map((_, i) => (
-                                  <span
-                                    key={i}
-                                    className={`am-dot ${i === coverSlideIdx ? 'active' : ''}`}
-                                    onClick={() => setCoverSlideIdx(i)}
-                                  />
-                                ))}
-                              </div>
-                            </>
-                          )}
-                          <div className="am-slide-count">{coverSlideIdx + 1} / {coverImages.length}</div>
                         </div>
-                        {/* Thumbnail strip */}
-                        {coverImages.length > 1 && (
-                          <div className="am-thumb-strip">
-                            {coverImages.map((img, i) => (
-                              <img
-                                key={i}
-                                src={img}
-                                alt={`thumb ${i + 1}`}
-                                className={`am-thumb ${i === coverSlideIdx ? 'active' : ''}`}
-                                onClick={() => setCoverSlideIdx(i)}
-                              />
-                            ))}
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          className="am-changeBtn"
-                          onClick={() => setUploadStep("grid")}
-                          title="Change cover images"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                          </svg>
-                          Change
-                        </button>
                       </>
                     ) : (
                       <div className="am-placeholder">
@@ -1154,31 +1062,43 @@ export default function CreateDigitalProduct({
                   />
                 </div>
 
-                <DeliverablesSection
-                  deliverables={mainDeliverables.map((d, idx) => ({
-                    file: d instanceof File ? d : (d.file instanceof File ? d.file : null),
-                    name: d.file_name || d.name,
-                    size: d.file_size || d.size,
-                    notes: notes[idx] || (typeof d === 'object' ? d.notes : "") || "",
-                  }))}
-                  onAddDeliverable={(file) => {
-                    setMainDeliverables((p) => [...p, file]);
-                    setNotes((p) => [...p, ""]);
-                  }}
-                  onRemoveDeliverable={(idx) => {
-                    setMainDeliverables((p) => p.filter((_, i) => i !== idx));
-                    setNotes((p) => p.filter((_, i) => i !== idx));
-                  }}
-                  onUpdateDeliverableNotes={(idx, val) => {
-                    setNotes((p) => p.map((n, i) => (i === idx ? val : n)));
-                  }}
-                  onUpdateDeliverableFile={(idx, file) => {
-                    setMainDeliverables((p) => p.map((f, i) => (i === idx ? file : f)));
-                  }}
-                  links={links}
-                  onAddLink={() => setLinks((p) => [...p, ""])}
-                  onRemoveLink={(idx) => setLinks((p) => p.filter((_, i) => i !== idx))}
-                  onUpdateLink={(idx, val) => setLinks((p) => p.map((l, i) => (i === idx ? val : l)))}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={isDragging ? "ring-2 ring-[#CEFF1B] rounded-2xl" : ""}
+                >
+                  <DeliverablesSection
+                    deliverables={mainDeliverables.map((d, idx) => ({
+                      file: d instanceof File ? d : d?.file instanceof File ? d.file : null,
+                      name: d?.file_name || d?.name || "",
+                      size: d?.file_size || d?.size || "",
+                      notes: notes[idx] || (typeof d === "object" ? d?.notes : "") || "",
+                    }))}
+                    onAddDeliverable={(file) => {
+                      setMainDeliverables((prev) => [...prev, file]);
+                      setNotes((prev) => [...prev, ""]);
+                    }}
+                    onRemoveDeliverable={removeDeliverable}
+                    onUpdateDeliverableNotes={updateNoteField}
+                    onUpdateDeliverableFile={(idx, file) => {
+                      setMainDeliverables((prev) =>
+                        prev.map((item, i) => (i === idx ? file : item))
+                      );
+                    }}
+                    links={links}
+                    onAddLink={addLinkField}
+                    onRemoveLink={removeLinkField}
+                    onUpdateLink={updateLinkField}
+                  />
+                </div>
+
+                <input
+                  ref={deliverableFileRef}
+                  type="file"
+                  className="hidden"
+                  multiple
+                  onChange={handleMainDeliverablesChange}
                 />
 
                 <div className="faq-wrap">
@@ -1193,25 +1113,8 @@ export default function CreateDigitalProduct({
                           type="button"
                           className="faq-trash"
                           onClick={() => removeFaq(idx)}
-                          aria-label="Delete FAQ"
-                          title="Delete"
                         >
-                          <svg
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M3 6h18"></path>
-                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                          </svg>
+                          ×
                         </button>
                       </div>
 
@@ -1234,16 +1137,12 @@ export default function CreateDigitalProduct({
                           onChange={(e) => updateFaq(idx, "a", e.target.value)}
                         />
                       </div>
-
-                      <button
-                        type="button"
-                        className="faq-add"
-                        onClick={addFaq}
-                      >
-                        + Add
-                      </button>
                     </div>
                   ))}
+
+                  <button type="button" className="faq-add" onClick={addFaq}>
+                    + Add FAQ
+                  </button>
                 </div>
 
                 <div className="faq-actions">
@@ -1253,14 +1152,7 @@ export default function CreateDigitalProduct({
                     onClick={() => handleSubmit("draft")}
                     disabled={savingStatus !== null}
                   >
-                    {savingStatus === "draft" ? (
-                      <span className="saving-indicator">
-                        <span className="saving-dot" />
-                        Saving...
-                      </span>
-                    ) : (
-                      "Save as Draft"
-                    )}
+                    {savingStatus === "draft" ? "Saving draft..." : "Save as Draft"}
                   </button>
 
                   <button
@@ -1269,14 +1161,13 @@ export default function CreateDigitalProduct({
                     onClick={() => handleSubmit("published")}
                     disabled={savingStatus !== null}
                   >
-                    {savingStatus === "published" ? (
-                      <span className="saving-indicator">
-                        <span className="saving-dot" />
-                        Saving...
-                      </span>
-                    ) : (
-                      isEditMode ? "Update" : "Save"
-                    )}
+                    {savingStatus === "published"
+                      ? isEditMode
+                        ? "Updating..."
+                        : "Publishing..."
+                      : isEditMode
+                        ? "Update"
+                        : "Save"}
                   </button>
                 </div>
               </div>
@@ -1285,46 +1176,49 @@ export default function CreateDigitalProduct({
         </div>
       </div>
 
-      {isModalOpen && (
-        <div
-          className="fixed inset-0 z-[900] bg-black/30 backdrop-blur-sm"
-          onClick={() => setUploadStep(null)}
-        />
-      )}
+      {isModalOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-[900] bg-black/30 backdrop-blur-sm"
+            onClick={() => setUploadStep(null)}
+          />
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-5 w-full max-w-2xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold">Upload cover images</h3>
+                <button type="button" onClick={() => setUploadStep(null)}>
+                  ×
+                </button>
+              </div>
 
-      {(uploadStep === "grid" || uploadStep === "success") && (
-        <UploadGrid
-          initialFiles={coverFiles}
-          onSelect={(files) => {
-            const validFiles = files.filter(Boolean);
-            if (!validFiles.length) return;
-            setCoverFiles(validFiles);
-            const urls = validFiles.map(file => URL.createObjectURL(file));
-            setCoverImages(urls);
-            setCoverSlideIdx(0);
-            setUploadStep("success");
-          }}
-          onBack={() => setUploadStep(null)}
-          blurred={uploadStep === "success"}
-        />
-      )}
-
-      {uploadStep === "success" && (
-        <UploadSuccess onBack={() => setUploadStep(null)} />
-      )}
+              <div
+                className="border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer"
+                onClick={() => coverFileRef.current?.click()}
+              >
+                <p className="text-gray-600">Click here to select multiple images</p>
+                <input
+                  ref={coverFileRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    applyCoverFiles(e.target.files, false);
+                    setUploadStep("success");
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
 
-function CustomSelect({
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled = false,
-}) {
-  const [open, setOpen] = React.useState(false);
-  const ref = React.useRef(null);
+function CustomSelect({ value, onChange, options, placeholder, disabled = false }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
 
   React.useEffect(() => {
     const handleClickOutside = (e) => {
@@ -1347,176 +1241,28 @@ function CustomSelect({
           if (!disabled) setOpen(!open);
         }}
       >
-        <span className={!value ? "opacity-70" : ""}>
-          {value || placeholder}
-        </span>
+        <span className={!value ? "opacity-70" : ""}>{value || placeholder}</span>
         <span className="onboarding-arrow">▼</span>
       </div>
-      {open && (
+      {open ? (
         <ul className="onboarding-options-list dark:bg-[#1E1E1E]">
-          {options.map((opt, index) => (
-            <li
-              key={`${opt}-${index}`}
-              className={value === opt ? "active" : ""}
-              onClick={() => {
-                onChange(opt);
-                setOpen(false);
-              }}
-            >
-              {opt}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function UploadGrid({ onSelect, onBack, blurred, initialFiles = [] }) {
-  const fileRef = useRef(null);
-  const [files, setFiles] = useState(initialFiles);
-  const [previews, setPreviews] = useState([]);
-  const activeIndexRef = useRef(null);
-
-  // Initialize previews from initialFiles
-  React.useEffect(() => {
-    const urls = initialFiles.map(f => {
-      if (f instanceof File) return URL.createObjectURL(f);
-      if (typeof f === 'string') return f;
-      return null;
-    });
-    setPreviews(urls);
-
-    return () => {
-      urls.forEach(u => {
-        if (typeof u === 'string' && u.startsWith('blob:')) URL.revokeObjectURL(u);
-      });
-    };
-  }, [initialFiles]);
-
-  const handleFiles = (e) => {
-    const newFiles = Array.from(e.target.files);
-    if (!newFiles.length) return;
-
-    if (activeIndexRef.current !== null) {
-      const idx = activeIndexRef.current;
-      const nextFiles = [...files];
-      const nextPreviews = [...previews];
-
-      // Cleanup old blob if needed
-      if (typeof nextPreviews[idx] === 'string' && nextPreviews[idx].startsWith('blob:')) {
-        URL.revokeObjectURL(nextPreviews[idx]);
-      }
-
-      nextFiles[idx] = newFiles[0];
-      nextPreviews[idx] = URL.createObjectURL(newFiles[0]);
-
-      setFiles(nextFiles);
-      setPreviews(nextPreviews);
-      activeIndexRef.current = null;
-    } else {
-      const remainingSlots = 9 - files.length;
-      const filesToAdd = newFiles.slice(0, remainingSlots);
-      const newUrls = filesToAdd.map(f => URL.createObjectURL(f));
-
-      setFiles(prev => [...prev, ...filesToAdd]);
-      setPreviews(prev => [...prev, ...newUrls]);
-    }
-    e.target.value = "";
-  };
-
-  const removeFile = (idx, e) => {
-    e.stopPropagation();
-    if (typeof previews[idx] === 'string' && previews[idx].startsWith('blob:')) {
-      URL.revokeObjectURL(previews[idx]);
-    }
-    setFiles(p => p.filter((_, i) => i !== idx));
-    setPreviews(p => p.filter((_, i) => i !== idx));
-  };
-
-  return (
-    <div className={`am-modal-overlay ${blurred ? "blurred" : ""}`}>
-      <div className="am-modal-content">
-        <div className="am-modal-header">
-          <button className="am-back-btn" onClick={onBack}>
-            ← Back
-          </button>
-          <h2 className="am-modal-title">Upload Cover Photo</h2>
-          <button
-            className="am-done-btn"
-            onClick={() => onSelect(files)}
-            disabled={!files.length}
-          >
-            Done
-          </button>
-        </div>
-
-        <div className="am-upload-grid">
-          {[...Array(9)].map((_, i) => {
-            const url = previews[i];
-
+          {options.map((opt, index) => {
+            const label = opt?.name || opt;
             return (
-              <div
-                key={i}
-                className={`am-grid-slot ${url ? "has-file" : ""}`}
+              <li
+                key={`${label}-${index}`}
+                className={value === label ? "active" : ""}
                 onClick={() => {
-                  activeIndexRef.current = i;
-                  fileRef.current?.click();
+                  onChange(label);
+                  setOpen(false);
                 }}
               >
-                {url ? (
-                  <>
-                    <img src={url} alt="" className="am-slot-img" />
-                    <button
-                      className="am-remove-slot"
-                      onClick={(e) => removeFile(i, e)}
-                    >
-                      ×
-                    </button>
-                  </>
-                ) : (
-                  <div className="am-slot-add">+</div>
-                )}
-              </div>
+                {label}
+              </li>
             );
           })}
-        </div>
-        <input
-          type="file"
-          ref={fileRef}
-          className="hidden"
-          multiple
-          accept="image/*"
-          onChange={handleFiles}
-        />
-        <p className="am-modal-hint">
-          Upload up to 9 images. The first image will be your main cover.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function UploadSuccess({ onBack }) {
-  return (
-    <div className="fixed inset-0 z-[1001] flex items-center justify-center pointer-events-auto p-4">
-      <div className="upload-success-card rounded-2xl w-[90%] max-w-[600px] h-auto min-h-[300px] md:h-[400px] py-10 flex flex-col items-center justify-center shadow-[0_0_20px_#CEFF1B] bg-white dark:bg-[#2B2B2B]">
-        <div className="w-24 h-24 bg-[#CEFF1B] rounded-full flex items-center justify-center mb-6">
-          <img src="/right.svg" alt="" />
-        </div>
-        <h3 className="text-2xl font-semibold mb-8 text-black dark:text-white text-center px-4">
-          You have successfully uploaded!
-        </h3>
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={onBack}
-            className="upload-btn-confirm px-12 py-3 rounded-lg bg-[#CEFF1B] border border-black font-semibold text-black transition-transform hover:scale-105"
-          >
-            Back
-          </button>
-        </div>
-      </div>
+        </ul>
+      ) : null}
     </div>
   );
 }

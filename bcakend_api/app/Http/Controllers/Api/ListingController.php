@@ -26,7 +26,6 @@ class ListingController extends Controller
         'sub_category' => 'nullable|string|max:150',
         'short_description' => 'nullable|string',
         'about' => 'nullable|string',
-        'prerequisites' => 'nullable|string',
 
         'ai_powered' => 'nullable|boolean',
         'seller_mode' => 'nullable|in:Solo,Team',
@@ -176,7 +175,7 @@ class ListingController extends Controller
             'sub_category' => $validated['sub_category'] ?? null,
             'price' => $listingPrice,
             'short_description' => $validated['short_description'] ?? null,
-            'about' => $validated['prerequisites'] ?? null,
+            'about' => $validated['about'] ?? null,
             'seller_mode' => $validated['seller_mode'] ?? 'Solo',
             'team_name' => $validated['team_name'] ?? null,
             'tags_json' => !empty($cleanTags) ? json_encode($cleanTags) : null,
@@ -260,7 +259,7 @@ class ListingController extends Controller
                     'listing_id' => $listingId,
                     'product_type' => data_get($validated, 'details.product_type'),
                     'price' => data_get($validated, 'details.price'),
-                    'included_json' => !empty($included) ? json_encode($included) : null,
+                    'included_json' => json_encode($included),
                     'delivery_format' => data_get($validated, 'details.delivery_format'),
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -308,9 +307,10 @@ class ListingController extends Controller
                 'included_json' => json_encode($included),
                 'learning_points_json' => !empty($learningPoints) ? json_encode($learningPoints) : null,
                 'languages_json' => !empty($languages) ? json_encode($languages) : null,
+                'preview_video_path' => $previewVideoPath,
+                'preview_video_name' => $previewVideoName,
                 'preview_video_mime' => $previewVideoMime,
                 'preview_video_size' => $previewVideoSize,
-                'about_course' => $validated['about'] ?? null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -331,13 +331,18 @@ class ListingController extends Controller
                 $mediaSize = null;
 
                 if ($mediaFile) {
-                    $mediaPath = $mediaFile->store('listings/course/lessons', 'public');
+                    $isVideo = str_starts_with((string) $mediaFile->getMimeType(), 'video/');
+                    $mediaFolder = $isVideo
+                        ? 'listings/course/lessons/videos'
+                        : 'listings/course/lessons/images';
+
+                    $mediaPath = $mediaFile->store($mediaFolder, 'public');
                     $mediaName = $mediaFile->getClientOriginalName();
                     $mediaMime = $mediaFile->getMimeType();
                     $mediaSize = $mediaFile->getSize();
 
                     if (!$mediaType) {
-                        $mediaType = str_starts_with((string) $mediaMime, 'video/') ? 'video' : 'image';
+                        $mediaType = $isVideo ? 'video' : 'image';
                     }
                 }
 
@@ -620,7 +625,6 @@ public function updateListing(Request $request, string $username): JsonResponse
         'sub_category' => 'nullable|string|max:150',
         'short_description' => 'nullable|string',
         'about' => 'nullable|string',
-        'prerequisites' => 'nullable|string',
 
         'ai_powered' => 'nullable|boolean',
         'seller_mode' => 'nullable|in:Solo,Team',
@@ -793,7 +797,7 @@ public function updateListing(Request $request, string $username): JsonResponse
                 'sub_category' => $validated['sub_category'] ?? null,
                 'price' => $listingPrice,
                 'short_description' => $validated['short_description'] ?? null,
-                'about' => $validated['prerequisites'] ?? null,
+                'about' => $validated['about'] ?? null,
                 'seller_mode' => $validated['seller_mode'] ?? 'Solo',
                 'team_name' => $validated['team_name'] ?? null,
                 'tags_json' => !empty($cleanTags) ? json_encode($cleanTags) : null,
@@ -898,7 +902,7 @@ public function updateListing(Request $request, string $username): JsonResponse
                 [
                     'product_type' => data_get($validated, 'details.product_type'),
                     'price' => data_get($validated, 'details.price'),
-                    'included_json' => !empty($included) ? json_encode($included) : null,
+                    'included_json' => json_encode($included),
                     'delivery_format' => data_get($validated, 'details.delivery_format'),
                     'updated_at' => now(),
                     'created_at' => now(),
@@ -936,6 +940,8 @@ public function updateListing(Request $request, string $username): JsonResponse
                 $previewVideoSize = $oldCourseDetails->preview_video_size ?? null;
 
                 $previewVideo = $request->file('details.preview_video_file');
+                $existingPreviewVideoUrl = trim((string) $request->input('details.existing_preview_video_url', '__KEEP__'));
+
                 if ($previewVideo) {
                     if ($previewVideoPath && Storage::disk('public')->exists($previewVideoPath)) {
                         Storage::disk('public')->delete($previewVideoPath);
@@ -945,6 +951,14 @@ public function updateListing(Request $request, string $username): JsonResponse
                     $previewVideoName = $previewVideo->getClientOriginalName();
                     $previewVideoMime = $previewVideo->getMimeType();
                     $previewVideoSize = $previewVideo->getSize();
+                } elseif ($existingPreviewVideoUrl === '') {
+                    if ($previewVideoPath && Storage::disk('public')->exists($previewVideoPath)) {
+                        Storage::disk('public')->delete($previewVideoPath);
+                    }
+                    $previewVideoPath = null;
+                    $previewVideoName = null;
+                    $previewVideoMime = null;
+                    $previewVideoSize = null;
                 }
 
                 DB::table('course_listing_details')->updateOrInsert(
@@ -955,9 +969,10 @@ public function updateListing(Request $request, string $username): JsonResponse
                         'included_json' => json_encode($included),
                         'learning_points_json' => !empty($learningPoints) ? json_encode($learningPoints) : null,
                         'languages_json' => !empty($languages) ? json_encode($languages) : null,
+                        'preview_video_path' => $previewVideoPath,
+                        'preview_video_name' => $previewVideoName,
                         'preview_video_mime' => $previewVideoMime,
                         'preview_video_size' => $previewVideoSize,
-                        'about_course' => $validated['about'] ?? null,
                         'updated_at' => now(),
                         'created_at' => now(),
                     ]
@@ -982,7 +997,9 @@ public function updateListing(Request $request, string $username): JsonResponse
                     }
                 }
 
-                DB::table('course_listing_lessons')->where('listing_id', $existing->id)->delete();
+                DB::table('course_listing_lessons')
+                    ->where('listing_id', $existing->id)
+                    ->delete();
 
                 foreach ((data_get($validated, 'details.lessons') ?? []) as $index => $lesson) {
                     $title = trim((string) ($lesson['title'] ?? ''));
@@ -1001,7 +1018,9 @@ public function updateListing(Request $request, string $username): JsonResponse
 
                     if ($mediaFile) {
                         $isVideo = str_starts_with((string) $mediaFile->getMimeType(), 'video/');
-                        $mediaFolder = $isVideo ? 'listings/course/lessons/videos' : 'listings/course/lessons/images';
+                        $mediaFolder = $isVideo
+                            ? 'listings/course/lessons/videos'
+                            : 'listings/course/lessons/images';
 
                         $mediaName = $mediaFile->getClientOriginalName();
                         $mediaMime = $mediaFile->getMimeType();
@@ -1470,7 +1489,6 @@ public function updateListing(Request $request, string $username): JsonResponse
                 $details['preview_video_url'] = $courseDetails->preview_video_path
                     ? Storage::disk('public')->url($courseDetails->preview_video_path)
                     : null;
-                $details['about_course'] = $courseDetails->about_course ?? null;
             }
 
             $lessons = Schema::hasTable('course_listing_lessons')

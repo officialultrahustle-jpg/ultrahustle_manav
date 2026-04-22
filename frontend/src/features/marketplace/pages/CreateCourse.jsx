@@ -56,7 +56,6 @@ export default function CreateCourse({
     price: "",
     shortDescription: "",
     about: "",
-    prerequisites: "",
   });
 
   const [toolsInput, setToolsInput] = useState("");
@@ -244,11 +243,12 @@ export default function CreateCourse({
 
   const applyCoverFiles = (files) => {
     setCoverFiles(files);
-    const newUrls = files.map((f) =>
-      f instanceof File ? URL.createObjectURL(f) : (typeof f === 'string' ? f : '')
-    ).filter(Boolean);
+    const newUrls = files.map((f) => {
+      if (f instanceof File) return URL.createObjectURL(f);
+      if (typeof f === "string") return f;
+      return null;
+    }).filter(Boolean);
     setCoverImages(newUrls);
-    setCoverSlideIdx(0);
     setActivePreviewImg(0);
   };
 
@@ -307,28 +307,58 @@ export default function CreateCourse({
                 ? String(item.details.price)
                 : "",
           shortDescription: item.short_description || "",
-          about: item?.details?.about_course || "",
-          prerequisites: item.about || "",
+          about: item.about || "",
         });
 
-        setTools(Array.isArray(item?.tools) ? item.tools : (Array.isArray(item?.details?.tools) ? item.details.tools : []));
+        const existingUrls = [];
+        if (item.gallery_json) {
+          try {
+            const gallery = JSON.parse(item.gallery_json);
+            if (Array.isArray(gallery)) {
+              gallery.forEach((path) => {
+                existingUrls.push(path.startsWith("http") ? path : `/storage/${path}`);
+              });
+            }
+          } catch (e) {
+            console.error("Failed to parse gallery_json", e);
+          }
+        } else if (item.cover_media_url || item.cover_media_path) {
+          existingUrls.push(item.cover_media_url || item.cover_media_path);
+        }
+
+        setCoverImages(existingUrls);
+        setCoverFiles(existingUrls);
+
+        setTools(
+          Array.isArray(item?.tools)
+            ? item.tools
+            : Array.isArray(item?.details?.tools)
+              ? item.details.tools
+              : []
+        );
+
         setCourseIncluded(
           Array.isArray(item?.details?.included) ? item.details.included : []
         );
+
         setLearningPoints(
-          Array.isArray(item?.details?.learning_points) ? item.details.learning_points : []
+          Array.isArray(item?.details?.learning_points)
+            ? item.details.learning_points
+            : []
         );
+
         setLanguages(
           Array.isArray(item?.details?.languages) ? item.details.languages : []
         );
+
         setAiPowered(Boolean(item?.ai_powered));
 
         setFaqs(
           Array.isArray(item.faqs) && item.faqs.length
             ? item.faqs.map((faq) => ({
-                q: faq.q || faq.question || "",
-                a: faq.a || faq.answer || "",
-              }))
+              q: faq.q || faq.question || "",
+              a: faq.a || faq.answer || "",
+            }))
             : [{ q: "", a: "" }]
         );
 
@@ -348,53 +378,44 @@ export default function CreateCourse({
             }))
           );
         } else {
-          setResources([]);
+          setResources([{ file: null, notes: "" }]);
         }
 
         setLessons(
           Array.isArray(item?.details?.lessons) && item.details.lessons.length
-            ? item.details.lessons.map((lesson) => ({
+            ? item.details.lessons.map((lesson) => {
+              const mediaUrl = lesson.media_url || lesson.url || "";
+              return {
                 title: lesson.title || "",
                 description: lesson.description || "",
-                media: (lesson.media_url || lesson.url)
+                media: mediaUrl
                   ? {
-                      preview: lesson.media_url || lesson.url,
-                      existing_url: lesson.media_url || lesson.url,
-                      existing_path: lesson.media_path || lesson.path || "",
-                      file: null,
-                      type: lesson.media_type || lesson.type || null,
-                    }
+                    preview: mediaUrl,
+                    existing_url: mediaUrl,
+                    existing_path: lesson.media_path || lesson.path || "",
+                    file: null,
+                    type:
+                      lesson.media_type ||
+                      lesson.type ||
+                      (mediaUrl.match(/\.(mp4|webm|ogg|mov)$/i) ? "video" : "image"),
+                  }
                   : null,
-              }))
+              };
+            })
             : [
-                { title: "", description: "", media: null },
-                { title: "", description: "", media: null },
-                { title: "", description: "", media: null },
-              ]
+              { title: "", description: "", media: null },
+              { title: "", description: "", media: null },
+              { title: "", description: "", media: null },
+            ]
         );
-
-        if (Array.isArray(item.gallery) && item.gallery.length > 0) {
-          setCoverImages(item.gallery);
-        } else if (item.gallery_json) {
-          try {
-            const gallery = JSON.parse(item.gallery_json);
-            if (Array.isArray(gallery)) {
-              const urls = gallery.map((path) =>
-                path.startsWith("http") ? path : `/storage/${path}`
-              );
-              setCoverImages(urls);
-            }
-          } catch (e) {
-            console.error("Failed to parse gallery_json", e);
-          }
-        } else if (item.cover_media_url || item.cover_media_path) {
-          setCoverImages([item.cover_media_url || item.cover_media_path]);
-        }
 
         if (item?.details?.preview_video_url || item?.preview_video_url) {
           const vUrl = item?.details?.preview_video_url || item?.preview_video_url;
           setExistingPreviewVideoUrl(vUrl);
           setPreviewVideo(vUrl);
+        } else {
+          setExistingPreviewVideoUrl("");
+          setPreviewVideo(null);
         }
       } catch (e) {
         Swal.fire({
@@ -418,72 +439,80 @@ export default function CreateCourse({
     return "";
   };
 
-  const buildPayload = (status = "published") => ({
-  listing_type: LISTING_TYPE,
-  status,
-  ai_powered: aiPowered,
-  title: form.title,
-  category: form.category,
-  sub_category: form.subCategory,
-  short_description: form.shortDescription,
-  about: form.about,
-  prerequisites: form.prerequisites,
+  const buildPayload = (status = "published") => {
+    return {
+      listing_type: LISTING_TYPE,
+      status,
+      ai_powered: aiPowered,
+      title: form.title,
+      category: form.category,
+      sub_category: form.subCategory,
+      short_description: form.shortDescription,
+      about: form.about,
 
-  cover_files: coverFiles,
-  existing_cover_urls: coverImages.filter(url => !url.startsWith('blob:')),
+      cover_files: coverFiles.filter((f) => f instanceof File),
+      existing_cover_urls: coverFiles
+        .filter((f) => typeof f === "string")
+        .map((url) => url.replace(/.*\/storage\//, "")),
 
-  links: links.map((l) => String(l || "").trim()).filter(Boolean),
+      links: links.map((l) => String(l || "").trim()).filter(Boolean),
 
-  faqs: faqs.filter(
-    (f) => String(f.q || "").trim() || String(f.a || "").trim()
-  ),
+      faqs: faqs.filter(
+        (f) => String(f.q || "").trim() || String(f.a || "").trim()
+      ),
 
-  deliverables: resources.map(d => ({
-    file: d.file,
-    notes: d.notes || "",
-    existing_file_url: d.existing_file_url || ""
-  })),
-
-  details: {
-    product_type: form.productType,
-    price: form.price,
-    tools,
-    included: courseIncluded,
-    learning_points: learningPoints,
-    languages,
-
-    preview_video_file: previewVideoFile || null,
-    existing_preview_video_url: !previewVideoFile ? existingPreviewVideoUrl || "" : "",
-
-    lessons: lessons
-      .filter(
-        (lesson) =>
-          String(lesson.title || "").trim() ||
-          String(lesson.description || "").trim() ||
-          lesson.media?.file ||
-          lesson.media?.existing_url ||
-          lesson.media?.preview
-      )
-      .map((lesson) => ({
-        title: lesson.title,
-        description: lesson.description,
-
-        media_file: lesson.media?.file || null,
-        media_type: lesson.media?.type || null,
-
-        existing_media_path:
-          !lesson.media?.file && lesson.media?.existing_path
-            ? lesson.media.existing_path.replace("/storage/", "")
-            : "",
+      deliverables: resources.map((d) => ({
+        file: d.file || null,
+        notes: d.notes || "",
+        existing_file_url: d.existing_file_url || "",
       })),
-  },
-});
+
+      details: {
+        product_type: form.productType,
+        price: form.price,
+        tools,
+        included: courseIncluded,
+        learning_points: learningPoints,
+        languages,
+
+        preview_video_file: previewVideoFile || null,
+        existing_preview_video_url:
+          previewVideoFile ? "" : existingPreviewVideoUrl || "",
+
+        lessons: lessons
+          .filter(
+            (lesson) =>
+              String(lesson.title || "").trim() ||
+              String(lesson.description || "").trim() ||
+              lesson.media?.file ||
+              lesson.media?.existing_url ||
+              lesson.media?.preview
+          )
+          .map((lesson) => ({
+            title: lesson.title || "",
+            description: lesson.description || "",
+            media_file: lesson.media?.file || null,
+            media_type: lesson.media?.type || null,
+            existing_media_path:
+              !lesson.media?.file && lesson.media?.existing_path
+                ? lesson.media.existing_path.replace(/.*\/storage\//, "")
+                : "",
+          })),
+      },
+    };
+  };
 
   const handleSaveListing = async (asDraft = false) => {
     if (!asDraft) {
       const validationError = validateBeforeSave();
       if (validationError) {
-        Swal.fire({ icon: "warning", title: "Validation error", text: validationError, background: '#0b0b0b', color: '#fff' });
+        Swal.fire({
+          icon: "warning",
+          title: "Validation error",
+          text: validationError,
+          background: "#0b0b0b",
+          color: "#ffffff",
+        });
         return;
       }
     }
@@ -497,18 +526,29 @@ export default function CreateCourse({
         : await createListing(buildPayload(status));
 
       const titleText = asDraft
-        ? (isEditMode ? "Draft Updated" : "Draft Saved")
-        : (isEditMode ? "Course Updated" : "Course Created");
-      const bodyText = res?.message || (asDraft ? "Your draft has been saved." : (isEditMode ? "Your course has been updated successfully." : "Your course has been created successfully."));
+        ? isEditMode
+          ? "Draft Updated"
+          : "Draft Saved"
+        : isEditMode
+          ? "Course Updated"
+          : "Course Created";
+
+      const bodyText =
+        res?.message ||
+        (asDraft
+          ? "Your draft has been saved."
+          : isEditMode
+            ? "Your course has been updated successfully."
+            : "Your course has been created successfully.");
 
       Swal.fire({
         icon: "success",
         title: titleText,
         text: bodyText,
         confirmButtonText: asDraft ? "OK" : "Go to Listings",
-        confirmButtonColor: '#CEFF1B',
-        background: '#0b0b0b',
-        color: '#ffffff',
+        confirmButtonColor: "#CEFF1B",
+        background: "#0b0b0b",
+        color: "#ffffff",
       }).then((result) => {
         if (result.isConfirmed && !asDraft) {
           navigate("/my-listings");
@@ -519,8 +559,8 @@ export default function CreateCourse({
         icon: "error",
         title: isEditMode ? "Update failed" : "Save failed",
         text: e?.message || `Failed to ${isEditMode ? "update" : "save"} course.`,
-        background: '#0b0b0b',
-        color: '#ffffff',
+        background: "#0b0b0b",
+        color: "#ffffff",
       });
     } finally {
       setIsSubmitting(false);
@@ -564,9 +604,8 @@ export default function CreateCourse({
         />
 
         <div
-          className={`pt-[72px] flex relative z-10 transition-all duration-300 ${
-            isModalOpen ? "blur-sm pointer-events-none select-none" : ""
-          }`}
+          className={`pt-[72px] flex relative z-10 transition-all duration-300 ${isModalOpen ? "blur-sm pointer-events-none select-none" : ""
+            }`}
         >
           <Sidebar
             expanded={sidebarOpen}
@@ -590,8 +629,8 @@ export default function CreateCourse({
                           {isEditMode ? "Edit Course Listing" : "Create Course Listing"}
                           {aiPowered && (
                             <span className="csl-ai-pill active" style={{ marginLeft: 12, display: 'inline-flex' }}>
-                               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
-                               AI Powered
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                              AI Powered
                             </span>
                           )}
                         </h1>
@@ -717,21 +756,7 @@ export default function CreateCourse({
                       </div>
                     </div>
 
-                    <div className="csl-group-box">
-                      <div className="csl-field">
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="csl-label mb-0">About this course (Max 2000 characters)</label>
-                          <span style={{ fontSize: '12px', color: 'var(--csl-muted)' }}>{form.about.length}/2000</span>
-                        </div>
-                        <textarea
-                          className="csl-textarea h-40"
-                          placeholder="Describe your course in detail..."
-                          value={form.about}
-                          maxLength={2000}
-                          onChange={(e) => setFormField("about", e.target.value)}
-                        />
-                      </div>
-                    </div>
+
 
                     <div className="csl-group-box">
                       <div className="csl-field">
@@ -793,13 +818,16 @@ export default function CreateCourse({
 
                     <div className="csl-group-box">
                       <div className="csl-field">
-                        <label className="csl-label">Prerequisites</label>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="csl-label mb-0">Prerequisites (Max 500 characters)</label>
+                          <span style={{ fontSize: '12px', color: 'var(--csl-muted)' }}>{form.about.length}/500</span>
+                        </div>
                         <textarea
-                          className="csl-textarea h-28"
-                          placeholder="Prior knowledge or tools needed (Max 500 characters)"
-                          value={form.prerequisites}
+                          className="csl-textarea h-40"
+                          placeholder="Describe your course in detail..."
+                          value={form.about}
                           maxLength={500}
-                          onChange={(e) => setFormField("prerequisites", e.target.value)}
+                          onChange={(e) => setFormField("about", e.target.value)}
                         />
                       </div>
                     </div>
@@ -968,9 +996,8 @@ export default function CreateCourse({
                                   {coverImages.map((_, i) => (
                                     <span
                                       key={i}
-                                      className={`am-dot ${
-                                        i === activePreviewImg ? "active" : ""
-                                      }`}
+                                      className={`am-dot ${i === activePreviewImg ? "active" : ""
+                                        }`}
                                       onClick={() => setActivePreviewImg(i)}
                                     />
                                   ))}
@@ -981,9 +1008,8 @@ export default function CreateCourse({
                                   <img
                                     key={idx}
                                     src={url}
-                                    className={`am-thumb ${
-                                      activePreviewImg === idx ? "active" : ""
-                                    }`}
+                                    className={`am-thumb ${activePreviewImg === idx ? "active" : ""
+                                      }`}
                                     onClick={() => setActivePreviewImg(idx)}
                                     alt=""
                                   />
@@ -1180,37 +1206,37 @@ export default function CreateCourse({
                       {isSubmitting ? "Saving..." : isEditMode ? "Update & Publish" : "Save & Publish"}
                     </button>
                   </div>
-                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {uploadStep &&
-          createPortal(
-            <div className={`user-page ${theme || "light"}`}>
-              <div
-                className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm"
-                onClick={() => setUploadStep(null)}
+      {uploadStep &&
+        createPortal(
+          <div className={`user-page ${theme || "light"}`}>
+            <div
+              className="fixed inset-0 z-[9998] bg-black/30 backdrop-blur-sm"
+              onClick={() => setUploadStep(null)}
+            />
+
+            {(uploadStep === "grid" || uploadStep === "success") && (
+              <UploadGrid
+                initialFiles={coverFiles}
+                onSelect={(files) => {
+                  if (files?.length) applyCoverFiles(files);
+                  setUploadStep(null);
+                }}
+                onBack={() => setUploadStep(null)}
+                blurred={uploadStep === "success"}
               />
+            )}
 
-              {(uploadStep === "grid" || uploadStep === "success") && (
-                <UploadGrid
-                  initialFiles={coverFiles}
-                  onSelect={(files) => {
-                    if (files?.length) applyCoverFiles(files);
-                    setUploadStep(null);
-                  }}
-                  onBack={() => setUploadStep(null)}
-                  blurred={uploadStep === "success"}
-                />
-              )}
-
-              {uploadStep === "success" && <UploadSuccess onBack={() => setUploadStep(null)} />}
-            </div>,
-            document.body
-          )}
+            {uploadStep === "success" && <UploadSuccess onBack={() => setUploadStep(null)} />}
+          </div>,
+          document.body
+        )}
     </>
   );
 }
@@ -1259,16 +1285,15 @@ function CustomSelect({ value, onChange, options, placeholder, disabled = false,
 
   const filtered = useMemo(() => {
     if (!searchable || !search) return options;
-    return options.filter((opt) => 
+    return options.filter((opt) =>
       String(opt || "").toLowerCase().includes(search.toLowerCase())
     );
   }, [options, search, searchable]);
 
   return (
     <div
-      className={`onboarding-custom-select ${open ? "active" : ""} ${
-        disabled ? "opacity-50 pointer-events-none" : ""
-      }`}
+      className={`onboarding-custom-select ${open ? "active" : ""} ${disabled ? "opacity-50 pointer-events-none" : ""
+        }`}
       ref={ref}
     >
       <div className="onboarding-selected-option" onClick={() => !disabled && setOpen(!open)}>
