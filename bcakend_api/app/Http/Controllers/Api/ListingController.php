@@ -536,7 +536,8 @@ class ListingController extends Controller
                     'portfolio_id' => $portfolioId,
                     'title' => $title ?: null,
                     'description' => $description ?: null,
-                    'cost_cents' => $cost !== '' ? $cost : null,
+                    'cost_cents' => $this->normalizePortfolioCostToCents($cost),
+                    'currency' => 'USD',
                     'sort_order' => $sortOrder,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -1237,7 +1238,8 @@ public function updateListing(Request $request, string $username): JsonResponse
                     'portfolio_id' => $portfolio->id,
                     'title' => $title ?: null,
                     'description' => $description ?: null,
-                    'cost_cents' => $cost !== '' ? $cost : null,
+                    'cost_cents' => $this->normalizePortfolioCostToCents($cost),
+                    'currency' => 'USD',
                     'sort_order' => $sortOrder,
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -2098,5 +2100,34 @@ public function updateListing(Request $request, string $username): JsonResponse
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function normalizePortfolioCostToCents(?string $value): ?int
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        // If user entered a range like "$400-$500" or "400-500", do not force into bigint
+        if (preg_match('/\s*[-–]\s*/', $value)) {
+            return null;
+        }
+
+        // Keep only digits
+        $digits = preg_replace('/[^\d]/', '', $value);
+
+        if ($digits === null || $digits === '') {
+            return null;
+        }
+
+        return (int) $digits;
+    }
+
+    private function normalizePortfolioCostDisplay(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        return $value !== '' ? $value : null;
     }
 }
