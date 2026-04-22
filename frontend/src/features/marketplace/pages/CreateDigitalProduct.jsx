@@ -70,7 +70,7 @@ export default function CreateDigitalProduct({
     category: "",
     subCategory: "",
     shortDescription: "",
-    about: "",
+    // about: "",
     productType: "",
     price: "",
   });
@@ -398,7 +398,7 @@ export default function CreateDigitalProduct({
         category: listing.category || "",
         subCategory: listing.sub_category || "",
         shortDescription: listing.short_description || "",
-        about: listing.about || "",
+        // about: listing.about || "",
         productType:
           listing?.details?.product_type || listing?.product_type || "",
         price:
@@ -505,7 +505,7 @@ export default function CreateDigitalProduct({
       category: form.category || "",
       sub_category: form.subCategory || "",
       short_description: form.shortDescription || "",
-      about: form.about || "",
+      // about: form.about || "",
       ai_powered: aiPowered,
       cover_files: coverFiles.length ? coverFiles : null,
       existing_cover_urls: coverImages.filter(
@@ -694,16 +694,6 @@ export default function CreateDigitalProduct({
                       onChange={(e) =>
                         setFormField("shortDescription", e.target.value)
                       }
-                    />
-                  </div>
-
-                  <div className="csl-field mt-2">
-                    <label className="csl-label">About</label>
-                    <textarea
-                      className="csl-textarea"
-                      placeholder="About the product"
-                      value={form.about}
-                      onChange={(e) => setFormField("about", e.target.value)}
                     />
                   </div>
 

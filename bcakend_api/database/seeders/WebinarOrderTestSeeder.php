@@ -25,8 +25,8 @@ class WebinarOrderTestSeeder extends Seeder
             | Do NOT use non-existing IDs.
             |--------------------------------------------------------------------------
             */
-            $clientId = 69;   // change this to your logged-in client user id
-            $creatorId = 69;  // change this to an existing creator user id
+            $clientId = 98;   // change this to your logged-in client user id
+            $creatorId = 98;  // change this to an existing creator user id
 
             $clientExists = DB::table('users')->where('id', $clientId)->exists();
             $creatorExists = DB::table('users')->where('id', $creatorId)->exists();
