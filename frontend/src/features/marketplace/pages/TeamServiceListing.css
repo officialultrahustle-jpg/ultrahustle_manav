@@ -1906,3 +1906,117 @@
 .tsl-page.dark .tsl-expand-btn {
     color: #000 !important;
 }
+
+/* Team Members Section */
+.team-members-section {
+    margin-top: 48px;
+    margin-bottom: 48px;
+}
+
+.team-members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.member-card {
+    background: var(--tsl-card-bg);
+    border: 1px solid var(--tsl-border);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: var(--tsl-card-shadow);
+}
+
+.member-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--tsl-lime);
+}
+
+.member-avatar-wrap {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 16px;
+    overflow: hidden;
+    background: #e0e0e0;
+}
+
+.dark .member-avatar-wrap {
+    background: #333;
+}
+
+.member-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.member-avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    background: var(--tsl-muted);
+    opacity: 0.2;
+}
+
+.member-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--tsl-text);
+}
+
+.member-role {
+    font-size: 14px;
+    color: var(--tsl-muted);
+    margin-bottom: 20px;
+}
+
+.member-actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+}
+
+.member-btn-primary {
+    flex: 1;
+    background: var(--tsl-lime);
+    color: #000;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.member-btn-primary:hover {
+    background: #bce618;
+}
+
+.member-btn-outline {
+    flex: 1;
+    background: transparent;
+    color: var(--tsl-text);
+    border: 1px solid var(--tsl-border);
+    padding: 10px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.member-btn-outline:hover {
+    background: rgba(0,0,0,0.05);
+}
+
+.dark .member-btn-outline:hover {
+    background: rgba(255,255,255,0.05);
+}

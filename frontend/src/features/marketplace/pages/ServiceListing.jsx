@@ -69,6 +69,14 @@ const ServiceListing = ({ theme, setTheme }) => {
         ? "Team"
         : listing?.creator?.role || "Creator";
 
+    const displayAvatar = isTeamListing
+        ? listing?.team?.avatar_url || ""
+        : listing?.creator?.avatar_url || "";
+
+    const displayBio = isTeamListing
+        ? listing?.team?.bio || listing?.team?.about || ""
+        : listing?.creator?.bio || listing?.creator?.about || "";
+
     const profileRoute = listing?.creator?.username || listing?.creator_username || listingusername;
 
     useEffect(() => {
@@ -670,13 +678,12 @@ const ServiceListing = ({ theme, setTheme }) => {
                                                     ))}
                                                 </div>
                                             </div>
-
                                             <div className="tsl-profile-mini-card">
                                                 <div className="tsl-pmc-left">
                                                     <div className="tsl-pmc-avatar-wrap">
-                                                        {listing?.creator?.avatar_url ? (
+                                                        {displayAvatar ? (
                                                             <img
-                                                                src={listing.creator.avatar_url}
+                                                                src={displayAvatar}
                                                                 alt="Avatar"
                                                                 className="tsl-pmc-avatar-img"
                                                                 style={{
@@ -689,7 +696,7 @@ const ServiceListing = ({ theme, setTheme }) => {
                                                         ) : (
                                                             <div className="tsl-pmc-avatar-bg"></div>
                                                         )}
-                                                        <div className="tsl-pmc-status-dot"></div>
+                                                         <div className="tsl-pmc-status-dot"></div>
                                                     </div>
 
                                                     <div className="tsl-pmc-info">
@@ -999,7 +1006,6 @@ const ServiceListing = ({ theme, setTheme }) => {
                                             </div>
                                         </div>
                                     </section>
-
                                     <section className="compare-packages-section">
                                         <div className="compare-header">
                                             <h3 className="compare-title">Compare Packages</h3>
@@ -1042,6 +1048,34 @@ const ServiceListing = ({ theme, setTheme }) => {
                                             </table>
                                         </div>
                                     </section>
+
+                                    {isTeamListing && listing?.team?.members?.length > 0 && (
+                                        <section className="team-members-section">
+                                            <div className="portfolio-header">
+                                                <h3 className="portfolio-title">Members</h3>
+                                                <div className="portfolio-header-line"></div>
+                                            </div>
+                                            <div className="team-members-grid">
+                                                {listing.team.members.map((member) => (
+                                                    <div key={member.id} className="member-card">
+                                                        <div className="member-avatar-wrap">
+                                                            {member.avatar_url ? (
+                                                                <img src={member.avatar_url} alt={member.full_name} className="member-avatar-img" />
+                                                            ) : (
+                                                                <div className="member-avatar-placeholder"></div>
+                                                            )}
+                                                        </div>
+                                                        <h4 className="member-name">{member.full_name}</h4>
+                                                        <p className="member-role">{member.member_title || member.role || "Member"}</p>
+                                                        <div className="member-actions">
+                                                            <button className="member-btn-primary" onClick={() => navigate("/messages", { state: { receiverId: member.id } })}>Message</button>
+                                                            <button className="member-btn-outline" onClick={() => navigate(`/public-user-profile/${member.username}`)}>Profile</button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )}
 
                                     <section style={{ width: "100%" }}>
                                         <div
@@ -1187,11 +1221,11 @@ const ServiceListing = ({ theme, setTheme }) => {
 
                                     <DetailedTeamCard
                                         teamName={displayOwnerName}
-                                        avatarUrl={listing?.creator?.avatar_url || ""}
+                                        avatarUrl={displayAvatar}
                                         location={listing?.creator?.location || ""}
                                         rating={listing?.creator?.rating || 0}
                                         reviewCount={listing?.creator?.review_count || 0}
-                                        description={listing?.creator?.bio || listing?.creator?.about || ""}
+                                        description={displayBio}
                                         languages={listing?.creator?.languages || []}
                                         skills={listing?.creator?.skills || listing?.tags || []}
                                         memberSince={listing?.creator?.created_at || listing?.creator?.member_since || ""}

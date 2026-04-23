@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Models\Team;
 use Illuminate\Support\Facades\Log;
 
 class ListingController extends Controller
@@ -1822,6 +1823,46 @@ public function updateListing(Request $request, string $username): JsonResponse
             }
         }
 
+        $team = null;
+        if ($listing->seller_mode === 'Team' && !empty($listing->team_name)) {
+            $teamRow = DB::table('teams')
+                ->where('username', $listing->team_name)
+                ->orWhere('name', $listing->team_name)
+                ->first();
+
+            if ($teamRow) {
+                $team = (array) $teamRow;
+                $team['avatar_url'] = $teamRow->avatar_path ? Storage::disk('public')->url($teamRow->avatar_path) : null;
+                
+                // Fetch members
+                $team['members'] = DB::table('team_memberships')
+                    ->join('users', 'users.id', '=', 'team_memberships.user_id')
+                    ->leftJoin('user_personal_info', 'users.uh_user_id', '=', 'user_personal_info.uh_user_id')
+                    ->where('team_memberships.team_id', $teamRow->id)
+                    ->whereNull('team_memberships.left_at')
+                    ->get([
+                        'users.id',
+                        'users.username',
+                        'users.full_name',
+                        'team_memberships.role',
+                        'team_memberships.member_title',
+                        'user_personal_info.avatar_path',
+                        'user_personal_info.avatar_filename',
+                    ])
+                    ->map(fn ($m) => [
+                        'id' => $m->id,
+                        'username' => $m->username,
+                        'full_name' => $m->full_name,
+                        'role' => $m->role,
+                        'member_title' => $m->member_title,
+                        'avatar_url' => !empty($m->avatar_path)
+                            ? Storage::disk('public')->url($m->avatar_path)
+                            : (!empty($m->avatar_filename) ? $m->avatar_filename : null),
+                    ])
+                    ->all();
+            }
+        }
+
         return [
             'id' => $listing->id,
             'user_id' => $listing->user_id,
@@ -1850,6 +1891,7 @@ public function updateListing(Request $request, string $username): JsonResponse
             // 'delivery_formats' => $deliveryFormatsForResponse,
             // 'packages' => $packagesForResponse,
             'creator' => $creator,
+            'team' => $team,
             'portfolio_projects' => $portfolioProjects,
             'recommended_listings' => $recommendedListings,
             'more_from_user' => $moreFromUser,
