@@ -1705,6 +1705,7 @@ public function updateListing(Request $request, string $username): JsonResponse
         // =========================
         $recommendedListings = DB::table('listings')
             ->join('users', 'users.id', '=', 'listings.user_id')
+            ->join('user_personal_info', 'users.uh_user_id', '=', 'user_personal_info.uh_user_id')
             ->where('listings.status', 'published')
             ->where('listings.id', '!=', $listing->id)
             ->inRandomOrder()
@@ -1712,21 +1713,28 @@ public function updateListing(Request $request, string $username): JsonResponse
             ->get([
                 'listings.id',
                 'listings.title',
-                'listings.price',
                 'listings.username as listing_username',
                 'listings.listing_type',
                 'listings.cover_media_path',
                 'users.username as creator_username',
+                'users.full_name as creator_name',
+                'user_personal_info.avatar_path',
+                'user_personal_info.avatar_url',
             ])
             ->map(fn ($row) => [
                 'id' => $row->id,
                 'title' => $row->title,
                 'listing_username' => $row->listing_username,
                 'listing_type' => $row->listing_type,
-                'price' => $row->price,
                 'cover_media_path' => $row->cover_media_path,
-                'cover_media_url' => $row->cover_media_path ? Storage::disk('public')->url($row->cover_media_path) : null,
+                'cover_media_url' => $row->cover_media_path
+                    ? Storage::disk('public')->url($row->cover_media_path)
+                    : null,
                 'creator_username' => $row->creator_username,
+                'creator_name' => $row->creator_name,
+                'creator_avatar_url' => !empty($row->avatar_path)
+                    ? Storage::disk('public')->url($row->avatar_path)
+                    : (!empty($row->avatar_url) ? $row->avatar_url : null),
             ])
             ->values()
             ->all();
@@ -1736,6 +1744,7 @@ public function updateListing(Request $request, string $username): JsonResponse
         // =========================
         $moreFromUser = DB::table('listings')
             ->join('users', 'users.id', '=', 'listings.user_id')
+            ->join('user_personal_info', 'users.uh_user_id', '=', 'user_personal_info.uh_user_id')
             ->where('listings.user_id', $listing->user_id)
             ->where('listings.status', 'published')
             ->where('listings.id', '!=', $listing->id)
@@ -1746,19 +1755,26 @@ public function updateListing(Request $request, string $username): JsonResponse
                 'listings.title',
                 'listings.username as listing_username',
                 'listings.listing_type',
-                'listings.price',
                 'listings.cover_media_path',
                 'users.username as creator_username',
+                'users.full_name as creator_name',
+                'user_personal_info.avatar_path',
+                'user_personal_info.avatar_url',
             ])
             ->map(fn ($row) => [
                 'id' => $row->id,
                 'title' => $row->title,
                 'listing_username' => $row->listing_username,
                 'listing_type' => $row->listing_type,
-                'price' => $row->price,
                 'cover_media_path' => $row->cover_media_path,
-                'cover_media_url' => $row->cover_media_path ? Storage::disk('public')->url($row->cover_media_path) : null,
+                'cover_media_url' => $row->cover_media_path
+                    ? Storage::disk('public')->url($row->cover_media_path)
+                    : null,
                 'creator_username' => $row->creator_username,
+                'creator_name' => $row->creator_name,
+                'creator_avatar_url' => !empty($row->avatar_path)
+                    ? Storage::disk('public')->url($row->avatar_path)
+                    : (!empty($row->avatar_url) ? $row->avatar_url : null),
             ])
             ->values()
             ->all();
