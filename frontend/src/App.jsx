@@ -466,6 +466,12 @@ export default function App() {
                         path="/client-orders/:order_id/webinar"
                         element={<WebinarDeliverables theme={theme} setTheme={setTheme} />}
                     />
+
+                    <Route
+                        path="/client-orders/:order_id/course"
+                        element={<CourseDeliverables theme={theme} setTheme={setTheme} />}
+                    />
+
                     {/* <Route
                         path="/webinar/:username"
                         element={<WebinarDeliverables />}
