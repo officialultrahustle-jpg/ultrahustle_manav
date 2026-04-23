@@ -392,17 +392,51 @@ export default function CreateWebinar({
     setFaqs(faqs.filter((_, i) => i !== idx));
   };
 
-  const addDeliverable = () =>
-    setDeliverables([...deliverables, { file: null, notes: "" }]);
+  const addDeliverable = (file = null) => {
+    if (file instanceof File) {
+      setDeliverables((prev) => [
+        ...prev,
+        {
+          file,
+          notes: "",
+          existing_file_url: "",
+          existing_file_name: file.name,
+          file_name: file.name,
+          file_size: file.size,
+        },
+      ]);
+      return;
+    }
+
+    setDeliverables((prev) => [
+      ...prev,
+      { file: null, notes: "", existing_file_url: "", existing_file_name: "" },
+    ]);
+  };
 
   const updateDeliverableNotes = (idx, notes) =>
-    setDeliverables(deliverables.map((d, i) => (i === idx ? { ...d, notes } : d)));
+    setDeliverables((prev) =>
+      prev.map((d, i) => (i === idx ? { ...d, notes } : d))
+    );
 
   const updateDeliverableFile = (idx, file) =>
-    setDeliverables(deliverables.map((d, i) => (i === idx ? { ...d, file } : d)));
+    setDeliverables((prev) =>
+      prev.map((d, i) =>
+        i === idx
+          ? {
+            ...d,
+            file,
+            existing_file_url: file ? "" : d.existing_file_url || "",
+            existing_file_name: file ? file.name : d.existing_file_name || "",
+            file_name: file ? file.name : d.file_name || "",
+            file_size: file ? file.size : d.file_size || 0,
+          }
+          : d
+      )
+    );
 
   const removeDeliverable = (idx) =>
-    setDeliverables(deliverables.filter((_, i) => i !== idx));
+    setDeliverables((prev) => prev.filter((_, i) => i !== idx));
 
   const addLink = () => setLinks([...links, ""]);
   const updateLink = (idx, value) =>

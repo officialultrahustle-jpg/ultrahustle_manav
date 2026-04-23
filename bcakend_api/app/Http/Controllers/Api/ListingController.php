@@ -852,19 +852,40 @@ public function updateListing(Request $request, string $username): JsonResponse
                 ->where('listing_id', $existing->id)
                 ->get(['file_path']);
 
+            $keepPaths = [];
+
+            foreach (($request->input('deliverables', []) ?? []) as $index => $deliverableInput) {
+                $existingFileUrl = trim((string) ($deliverableInput['existing_file_url'] ?? ''));
+
+                if ($existingFileUrl !== '') {
+                    $path = str_replace(url('storage') . '/', '', $existingFileUrl);
+                    $path = str_replace(Storage::disk('public')->url(''), '', $path);
+                    $path = str_replace('/storage/', '', $path);
+
+                    if ($path !== '' && Storage::disk('public')->exists($path)) {
+                        $keepPaths[] = $path;
+                    }
+                }
+            }
+
             foreach ($oldDeliverables as $oldDeliverable) {
-                if ($oldDeliverable->file_path && Storage::disk('public')->exists($oldDeliverable->file_path)) {
+                if (
+                    $oldDeliverable->file_path &&
+                    !in_array($oldDeliverable->file_path, $keepPaths, true) &&
+                    Storage::disk('public')->exists($oldDeliverable->file_path)
+                ) {
                     Storage::disk('public')->delete($oldDeliverable->file_path);
                 }
             }
 
-            DB::table('listing_deliverables')->where('listing_id', $existing->id)->delete();
+            DB::table('listing_deliverables')
+                ->where('listing_id', $existing->id)
+                ->delete();
 
             foreach (($request->input('deliverables', []) ?? []) as $index => $deliverableInput) {
                 $file = $request->file("deliverables.$index.file");
                 $notes = trim((string) ($deliverableInput['notes'] ?? ''));
-
-                if (!$file && $notes === '') continue;
+                $existingFileUrl = trim((string) ($deliverableInput['existing_file_url'] ?? ''));
 
                 $filePath = null;
                 $fileName = null;
@@ -876,6 +897,21 @@ public function updateListing(Request $request, string $username): JsonResponse
                     $fileName = $file->getClientOriginalName();
                     $fileMime = $file->getMimeType();
                     $fileSize = $file->getSize();
+                } elseif ($existingFileUrl !== '') {
+                    $path = str_replace(url('storage') . '/', '', $existingFileUrl);
+                    $path = str_replace(Storage::disk('public')->url(''), '', $path);
+                    $path = str_replace('/storage/', '', $path);
+
+                    if ($path !== '' && Storage::disk('public')->exists($path)) {
+                        $filePath = $path;
+                        $fileName = basename($path);
+                        $fileMime = Storage::disk('public')->mimeType($path);
+                        $fileSize = Storage::disk('public')->size($path);
+                    }
+                }
+
+                if (!$filePath && $notes === '') {
+                    continue;
                 }
 
                 DB::table('listing_deliverables')->insert([
