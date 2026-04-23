@@ -15,11 +15,6 @@ class CourseOrderTestSeeder extends Seeder
         try {
             $now = now();
 
-            /*
-            |--------------------------------------------------------------------------
-            | 1) USE EXISTING USERS ONLY
-            |--------------------------------------------------------------------------
-            */
             $pairs = [
                 [
                     'client_id' => 98,
@@ -57,10 +52,12 @@ class CourseOrderTestSeeder extends Seeder
 
                 /*
                 |--------------------------------------------------------------------------
-                | 2) LISTING
+                | 1) LISTING
                 |--------------------------------------------------------------------------
                 */
                 if (Schema::hasTable('listings')) {
+                    $listingColumns = Schema::getColumnListing('listings');
+
                     $listingData = [
                         'id' => $listingId,
                         'user_id' => $creatorId,
@@ -80,22 +77,16 @@ class CourseOrderTestSeeder extends Seeder
                         'updated_at' => $now,
                     ];
 
-                    $this->upsertById('listings', $listingData);
-                }
+                    if (in_array('tags_json', $listingColumns, true)) {
+                        $listingData['tags_json'] = json_encode([
+                            'Course Design',
+                            'Mockup',
+                            'Digital Product',
+                        ]);
+                    }
 
-                /*
-                |--------------------------------------------------------------------------
-                | 3) COURSE DETAILS
-                |--------------------------------------------------------------------------
-                */
-                if (Schema::hasTable('course_listing_details')) {
-                    $detailsData = [
-                        'id' => 300 + $listingId,
-                        'listing_id' => $listingId,
-                        'price' => 2340.00,
-                        'product_type' => 'Recorded Course',
-                        'course_level' => 'Intermediate',
-                        'tools_json' => json_encode([
+                    if (in_array('tools_json', $listingColumns, true)) {
+                        $listingData['tools_json'] = json_encode([
                             'Notion',
                             'Tailwind CSS',
                             'Photoshop',
@@ -103,19 +94,58 @@ class CourseOrderTestSeeder extends Seeder
                             'Illustrator',
                             'TypeScript',
                             'Webflow',
-                        ]),
-                        'languages_json' => json_encode([
-                            'English',
-                            'Hindi',
-                            'Tamil',
-                        ]),
-                        'learning_points_json' => json_encode([
+                        ]);
+                    }
+
+                    $this->upsertById('listings', $listingData);
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | 2) COURSE DETAILS
+                |--------------------------------------------------------------------------
+                */
+                if (Schema::hasTable('course_listing_details')) {
+                    $detailColumns = Schema::getColumnListing('course_listing_details');
+
+                    $detailsData = [
+                        'id' => 300 + $listingId,
+                        'listing_id' => $listingId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+
+                    if (in_array('price', $detailColumns, true)) {
+                        $detailsData['price'] = 2340.00;
+                    }
+
+                    if (in_array('product_type', $detailColumns, true)) {
+                        $detailsData['product_type'] = 'Recorded Course';
+                    }
+
+                    if (in_array('course_level', $detailColumns, true)) {
+                        $detailsData['course_level'] = 'Intermediate';
+                    }
+
+                    if (in_array('learning_points_json', $detailColumns, true)) {
+                        $detailsData['learning_points_json'] = json_encode([
                             'Create premium course covers',
                             'Build digital product mockups',
                             'Package products professionally',
                             'Present work for better conversion',
-                        ]),
-                        'included_json' => json_encode([
+                        ]);
+                    }
+
+                    if (in_array('languages_json', $detailColumns, true)) {
+                        $detailsData['languages_json'] = json_encode([
+                            'English',
+                            'Hindi',
+                            'Tamil',
+                        ]);
+                    }
+
+                    if (in_array('included_json', $detailColumns, true)) {
+                        $detailsData['included_json'] = json_encode([
                             'Up to 12 screens',
                             'Interactive prototype',
                             'Advanced wireframing & prototyping',
@@ -123,17 +153,36 @@ class CourseOrderTestSeeder extends Seeder
                             'Custom color scheme & typography',
                             'Commercial use',
                             'Mobile & tablet responsive',
-                        ]),
-                        'prerequisites_json' => json_encode([
+                        ]);
+                    }
+
+                    if (in_array('prerequisites_json', $detailColumns, true)) {
+                        $detailsData['prerequisites_json'] = json_encode([
                             'Basic design understanding',
                             'Access to Figma or Photoshop',
                             'Interest in course asset design',
-                        ]),
-                        'preview_video_path' => null,
-                        'preview_video_url' => 'https://www.w3schools.com/html/mov_bbb.mp4',
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ];
+                        ]);
+                    }
+
+                    if (in_array('preview_video_path', $detailColumns, true)) {
+                        $detailsData['preview_video_path'] = null;
+                    }
+
+                    if (in_array('preview_video_url', $detailColumns, true)) {
+                        $detailsData['preview_video_url'] = 'https://www.w3schools.com/html/mov_bbb.mp4';
+                    }
+
+                    if (in_array('preview_video_name', $detailColumns, true)) {
+                        $detailsData['preview_video_name'] = 'mov_bbb.mp4';
+                    }
+
+                    if (in_array('preview_video_mime', $detailColumns, true)) {
+                        $detailsData['preview_video_mime'] = 'video/mp4';
+                    }
+
+                    if (in_array('preview_video_size', $detailColumns, true)) {
+                        $detailsData['preview_video_size'] = 0;
+                    }
 
                     $existing = DB::table('course_listing_details')
                         ->where('listing_id', $listingId)
@@ -150,15 +199,17 @@ class CourseOrderTestSeeder extends Seeder
 
                 /*
                 |--------------------------------------------------------------------------
-                | 4) COURSE LESSONS
+                | 3) COURSE LESSONS
                 |--------------------------------------------------------------------------
                 */
                 if (Schema::hasTable('course_listing_lessons')) {
+                    $lessonColumns = Schema::getColumnListing('course_listing_lessons');
+
                     DB::table('course_listing_lessons')
                         ->where('listing_id', $listingId)
                         ->delete();
 
-                    DB::table('course_listing_lessons')->insert([
+                    $lessons = [
                         [
                             'id' => ($listingId * 10) + 1,
                             'listing_id' => $listingId,
@@ -167,6 +218,9 @@ class CourseOrderTestSeeder extends Seeder
                             'media_type' => 'video',
                             'media_path' => null,
                             'external_url' => 'https://www.w3schools.com/html/mov_bbb.mp4',
+                            'media_name' => 'lesson-1.mp4',
+                            'media_mime' => 'video/mp4',
+                            'media_size' => 0,
                             'sort_order' => 0,
                             'created_at' => $now,
                             'updated_at' => $now,
@@ -179,6 +233,9 @@ class CourseOrderTestSeeder extends Seeder
                             'media_type' => 'video',
                             'media_path' => null,
                             'external_url' => 'https://www.w3schools.com/html/movie.mp4',
+                            'media_name' => 'lesson-2.mp4',
+                            'media_mime' => 'video/mp4',
+                            'media_size' => 0,
                             'sort_order' => 1,
                             'created_at' => $now,
                             'updated_at' => $now,
@@ -191,16 +248,37 @@ class CourseOrderTestSeeder extends Seeder
                             'media_type' => 'video',
                             'media_path' => null,
                             'external_url' => 'https://www.w3schools.com/html/mov_bbb.mp4',
+                            'media_name' => 'lesson-3.mp4',
+                            'media_mime' => 'video/mp4',
+                            'media_size' => 0,
                             'sort_order' => 2,
                             'created_at' => $now,
                             'updated_at' => $now,
                         ],
-                    ]);
+                    ];
+
+                    foreach ($lessons as &$lesson) {
+                        if (!in_array('external_url', $lessonColumns, true)) {
+                            unset($lesson['external_url']);
+                        }
+                        if (!in_array('media_name', $lessonColumns, true)) {
+                            unset($lesson['media_name']);
+                        }
+                        if (!in_array('media_mime', $lessonColumns, true)) {
+                            unset($lesson['media_mime']);
+                        }
+                        if (!in_array('media_size', $lessonColumns, true)) {
+                            unset($lesson['media_size']);
+                        }
+                    }
+                    unset($lesson);
+
+                    DB::table('course_listing_lessons')->insert($lessons);
                 }
 
                 /*
                 |--------------------------------------------------------------------------
-                | 5) FAQS
+                | 4) FAQS
                 |--------------------------------------------------------------------------
                 */
                 if (Schema::hasTable('listing_faqs')) {
@@ -218,6 +296,7 @@ class CourseOrderTestSeeder extends Seeder
                                 'listing_id' => $listingId,
                                 'question' => 'What information do you need to get started?',
                                 'answer' => 'I need your idea, target audience, references, and any brand guideline if available.',
+                                'sort_order' => 0,
                                 'created_at' => $now,
                                 'updated_at' => $now,
                             ],
@@ -226,6 +305,7 @@ class CourseOrderTestSeeder extends Seeder
                                 'listing_id' => $listingId,
                                 'question' => 'Do you provide the source files?',
                                 'answer' => 'Yes, source files are included in the final delivery package.',
+                                'sort_order' => 1,
                                 'created_at' => $now,
                                 'updated_at' => $now,
                             ],
@@ -237,6 +317,7 @@ class CourseOrderTestSeeder extends Seeder
                                 'listing_id' => $listingId,
                                 'q' => 'What information do you need to get started?',
                                 'a' => 'I need your idea, target audience, references, and any brand guideline if available.',
+                                'sort_order' => 0,
                                 'created_at' => $now,
                                 'updated_at' => $now,
                             ],
@@ -245,6 +326,7 @@ class CourseOrderTestSeeder extends Seeder
                                 'listing_id' => $listingId,
                                 'q' => 'Do you provide the source files?',
                                 'a' => 'Yes, source files are included in the final delivery package.',
+                                'sort_order' => 1,
                                 'created_at' => $now,
                                 'updated_at' => $now,
                             ],
@@ -258,7 +340,7 @@ class CourseOrderTestSeeder extends Seeder
 
                 /*
                 |--------------------------------------------------------------------------
-                | 6) ORDER
+                | 5) ORDER
                 |--------------------------------------------------------------------------
                 */
                 if (Schema::hasTable('orders')) {
@@ -308,7 +390,7 @@ class CourseOrderTestSeeder extends Seeder
 
                 /*
                 |--------------------------------------------------------------------------
-                | 7) LESSON PROGRESS
+                | 6) LESSON PROGRESS
                 |--------------------------------------------------------------------------
                 */
                 if (Schema::hasTable('order_course_lesson_progress')) {
@@ -343,7 +425,7 @@ class CourseOrderTestSeeder extends Seeder
 
                 /*
                 |--------------------------------------------------------------------------
-                | 8) ORDER RESOURCES
+                | 7) ORDER RESOURCES
                 |--------------------------------------------------------------------------
                 */
                 if (Schema::hasTable('order_resources')) {
@@ -405,7 +487,7 @@ class CourseOrderTestSeeder extends Seeder
 
                 /*
                 |--------------------------------------------------------------------------
-                | 9) ORDER REVIEW
+                | 8) ORDER REVIEW
                 |--------------------------------------------------------------------------
                 */
                 if (Schema::hasTable('order_reviews')) {
