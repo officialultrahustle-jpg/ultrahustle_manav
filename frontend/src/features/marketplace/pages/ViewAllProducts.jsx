@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import Navbar from "../../../components/layout/Navbar";
 import UserNavbar from "../../../components/layout/UserNavbar";
 import Sidebar from "../../../components/layout/Sidebar";
 import MobileBottomNav from "../../../components/layout/MobileBottomNav";
@@ -137,11 +138,15 @@ const ViewAllProducts = ({ theme, setTheme }) => {
 
     return (
         <div className={`alp-layout-wrapper user-page ${theme || "light"} min-h-screen relative overflow-hidden`}>
-            <UserNavbar
-                toggleSidebar={() => setSidebarOpen((prev) => !prev)}
-                theme={theme}
-                onDropdownChange={setIsDropdownOpen}
-            />
+            {isAuthenticated ? (
+                <UserNavbar
+                    toggleSidebar={() => setSidebarOpen((prev) => !prev)}
+                    theme={theme}
+                    onDropdownChange={setIsDropdownOpen}
+                />
+            ) : (
+                <Navbar />
+            )}
 
             <div className="pt-[72px] flex relative w-full">
                 {isAuthenticated && (

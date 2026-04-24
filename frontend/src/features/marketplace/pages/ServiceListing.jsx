@@ -19,6 +19,7 @@ import {
     Users,
 } from "lucide-react";
 import "./TeamServiceListing.css";
+import Navbar from "../../../components/layout/Navbar";
 import UserNavbar from "../../../components/layout/UserNavbar";
 import Sidebar from "../../../components/layout/Sidebar";
 import "../../../Darkuser.css";
@@ -581,11 +582,15 @@ const ServiceListing = ({ theme, setTheme }) => {
 
             {!isLoading && !fetchError && (
                 <>
-                    <UserNavbar
-                        toggleSidebar={() => setSidebarOpen((p) => !p)}
-                        isSidebarOpen={sidebarOpen}
-                        theme={theme}
-                    />
+                    {isAuthenticated ? (
+                        <UserNavbar
+                            toggleSidebar={() => setSidebarOpen((p) => !p)}
+                            isSidebarOpen={sidebarOpen}
+                            theme={theme}
+                        />
+                    ) : (
+                        <Navbar />
+                    )}
 
                     <div className="pt-[85px] flex relative z-10 transition-all duration-300">
                         {isAuthenticated && (

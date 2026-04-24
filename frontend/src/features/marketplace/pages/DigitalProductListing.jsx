@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 import "./DigitalProductListing.css";
+import Navbar from "../../../components/layout/Navbar";
 import UserNavbar from "../../../components/layout/UserNavbar";
 import Sidebar from "../../../components/layout/Sidebar";
 import "../../../Darkuser.css";
@@ -322,11 +323,15 @@ const DigitalProductListing = ({ theme, setTheme }) => {
   if (loading) {
     return (
       <div className={`user-page ${theme} min-h-screen`}>
-        <UserNavbar
-          toggleSidebar={() => setSidebarOpen((p) => !p)}
-          isSidebarOpen={sidebarOpen}
-          theme={theme}
-        />
+        {isAuthenticated ? (
+          <UserNavbar
+            toggleSidebar={() => setSidebarOpen((p) => !p)}
+            isSidebarOpen={sidebarOpen}
+            theme={theme}
+          />
+        ) : (
+          <Navbar />
+        )}
         <div className="pt-[72px] flex relative z-10">
           <div className="relative flex-1 min-w-0 overflow-hidden">
             <div className="overflow-y-auto h-[calc(100vh-72px)]">
@@ -346,11 +351,15 @@ const DigitalProductListing = ({ theme, setTheme }) => {
   if (pageError || !listing) {
     return (
       <div className={`user-page ${theme} min-h-screen`}>
-        <UserNavbar
-          toggleSidebar={() => setSidebarOpen((p) => !p)}
-          isSidebarOpen={sidebarOpen}
-          theme={theme}
-        />
+        {isAuthenticated ? (
+          <UserNavbar
+            toggleSidebar={() => setSidebarOpen((p) => !p)}
+            isSidebarOpen={sidebarOpen}
+            theme={theme}
+          />
+        ) : (
+          <Navbar />
+        )}
         <div className="pt-[72px] flex relative z-10">
           <div className="relative flex-1 min-w-0 overflow-hidden">
             <div className="overflow-y-auto h-[calc(100vh-72px)]">
@@ -371,11 +380,15 @@ const DigitalProductListing = ({ theme, setTheme }) => {
 
   return (
     <div className={`user-page ${theme} min-h-screen`}>
-      <UserNavbar
-        toggleSidebar={() => setSidebarOpen((p) => !p)}
-        isSidebarOpen={sidebarOpen}
-        theme={theme}
-      />
+      {isAuthenticated ? (
+        <UserNavbar
+          toggleSidebar={() => setSidebarOpen((p) => !p)}
+          isSidebarOpen={sidebarOpen}
+          theme={theme}
+        />
+      ) : (
+        <Navbar />
+      )}
 
       <div className="pt-[72px] flex relative z-10 transition-all duration-300">
         {isAuthenticated && (

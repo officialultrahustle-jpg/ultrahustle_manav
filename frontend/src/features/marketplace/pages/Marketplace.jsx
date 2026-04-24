@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import UserNavbar from "../../../components/layout/Navbar";
+import Navbar from "../../../components/layout/Navbar";
+import UserNavbar from "../../../components/layout/UserNavbar";
 import Sidebar from "../../../components/layout/Sidebar";
 import MobileBottomNav from "../../../components/layout/MobileBottomNav";
 import heroImg from "../../../assets/marketplace-bg-light.jpeg";
@@ -419,11 +420,15 @@ export default function Marketplace({ theme, setTheme }) {
         <>
             <div className={`mp-page user-page ${theme} h-screen relative overflow-hidden`}>
                 {/* NAVBAR */}
-                <UserNavbar
-                    toggleSidebar={() => setSidebarOpen((p) => !p)}
-                    isSidebarOpen={sidebarOpen}
-                    theme={theme}
-                />
+                {isAuthenticated ? (
+                    <UserNavbar
+                        toggleSidebar={() => setSidebarOpen((p) => !p)}
+                        isSidebarOpen={sidebarOpen}
+                        theme={theme}
+                    />
+                ) : (
+                    <Navbar />
+                )}
 
                 <div className="mp-content-wrapper flex flex-1 relative z-10">
                     {isAuthenticated && (
