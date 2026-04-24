@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ChevronRight, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import UserNavbar from "../../../components/layout/UserNavbar";
@@ -7,54 +7,38 @@ import MobileBottomNav from "../../../components/layout/MobileBottomNav";
 import "./TeamServiceListing.css"; /* Reusing card styles */
 import "./AllListingPages.css";
 
-const mockProducts = [
-    {
-        id: "r1",
-        name: "Abigail",
-        verified: true,
-        ai: true,
-        title: "Browse services, products, courses, and webinars tailored...",
-        rating: 4.5,
-        reviews: 123,
-        priceLabel: "Price: ₹ 24,000",
-        cta: "Know More",
-        image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=1400&auto=format&fit=crop",
-    },
-    {
-        id: "r2",
-        name: "Abigail",
-        verified: true,
-        ai: true,
-        title: "Browse services, products, courses, and webinars tailored...",
-        rating: 4.5,
-        reviews: 123,
-        priceLabel: "Price: ₹ 24,000",
-        cta: "Know More",
-        image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=1400&auto=format&fit=crop",
-    },
-    {
-        id: "r3",
-        name: "Abigail",
-        verified: true,
-        ai: true,
-        title: "Browse services, products, courses, and webinars tailored...",
-        rating: 4.5,
-        reviews: 123,
-        priceLabel: "Price: ₹ 24,000",
-        cta: "Know More",
-        image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=1400&auto=format&fit=crop",
-    }
-];
+import { getAllMarketplaceListings } from "../api/listingApi";
 
-const ProductCard = ({ p }) => (
+const ProductCard = ({ p, navigate }) => (
     <article className="tsl-mp-card" style={{ margin: 0, width: "100%", maxWidth: "100%" }}>
         <div className="tsl-mp-imgWrap">
-            <img className="tsl-mp-img" src={p.image} alt="" />
+            <img 
+                className="tsl-mp-img" 
+                src={p.image} 
+                alt={p.title} 
+                onError={(e) => {
+                    e.currentTarget.src = "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1400&auto=format&fit=crop";
+                }}
+            />
         </div>
         <div className="tsl-mp-cardBody">
             <div className="tsl-mp-topLine">
                 <div className="tsl-mp-user">
-                    <div className="tsl-mp-avatar"></div>
+                    {p.avatar ? (
+                        <img 
+                            src={p.avatar} 
+                            alt={p.name} 
+                            className="tsl-mp-avatar" 
+                            style={{ objectFit: "cover", borderRadius: "50%" }}
+                            onError={(e) => {
+                                e.currentTarget.outerHTML = `<div class="tsl-mp-avatar" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;font-size:0.7rem;">${(p.name || "?").charAt(0).toUpperCase()}</div>`;
+                            }}
+                        />
+                    ) : (
+                        <div className="tsl-mp-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#667eea,#764ba2)', color: '#fff', fontWeight: '700', fontSize: '0.7rem' }}>
+                            {(p.name || "?").charAt(0).toUpperCase()}
+                        </div>
+                    )}
                     <span className="tsl-mp-userName">{p.name}</span>
                     {p.verified && (
                         <svg
@@ -96,8 +80,8 @@ const ProductCard = ({ p }) => (
             <div className="tsl-mp-metaRow">
                 <div className="tsl-mp-rating">
                     <span className="tsl-mp-star">★</span>
-                    <span>{p.rating.toFixed(1)}</span>
-                    <span className="tsl-mp-rev">({p.reviews})</span>
+                    <span>{(p.rating || 4.5).toFixed(1)}</span>
+                    <span className="tsl-mp-rev">({p.reviews || 0})</span>
                 </div>
             </div>
             <div className="tsl-mp-bottomRow">
@@ -106,8 +90,18 @@ const ProductCard = ({ p }) => (
                     className="tsl-mp-cta"
                     style={{ backgroundColor: "#ceff1b", color: "#000" }}
                     type="button"
+                    onClick={() => {
+                        const pathMap = {
+                            'course': '/course',
+                            'webinar': '/webinar',
+                            'digital_product': '/digital-product',
+                            'service': '/service'
+                        };
+                        const prefix = pathMap[p.listing_type] || '/service';
+                        navigate(`${prefix}/${p.listing_username || p.username}`);
+                    }}
                 >
-                    {p.cta}
+                    {p.cta || "Know More"}
                     <ChevronRight size={12} className="tsl-mp-ctaIcon" />
                 </button>
             </div>
@@ -115,12 +109,12 @@ const ProductCard = ({ p }) => (
     </article>
 );
 
-const ListingSection = ({ title, items, onNavigate }) => (
+const ListingSection = ({ title, items, onNavigate, navigate }) => (
     <div className="alp-section">
         <h2 className="alp-section-title">{title}</h2>
         <div className="alp-grid">
             {items.map((item, idx) => (
-                <ProductCard key={item.id + idx} p={item} />
+                <ProductCard key={item.id} p={item} navigate={navigate} />
             ))}
         </div>
         <div className="alp-view-all-wrapper">
@@ -140,6 +134,49 @@ const AllListingPages = ({ theme, setTheme }) => {
     const [searchQuery, setSearchQuery] = useState("");
     const navigate = useNavigate();
 
+    const [allListings, setAllListings] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const isAuthenticated = !!(localStorage.getItem("token") || localStorage.getItem("auth_token"));
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setSidebarOpen(false);
+        }
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        const fetchListings = async () => {
+            try {
+                const data = await getAllMarketplaceListings();
+                if (data.success) {
+                    setAllListings(data.listings);
+                }
+            } catch (err) {
+                console.error("Error fetching listings:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchListings();
+    }, []);
+
+    const filtered = useMemo(() => {
+        let list = allListings;
+        if (searchQuery.trim()) {
+            list = list.filter(l => 
+                l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                l.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+        }
+        return list;
+    }, [allListings, searchQuery]);
+
+    const services = filtered.filter(l => l.listing_type === 'service').slice(0, 3);
+    const courses = filtered.filter(l => l.listing_type === 'course').slice(0, 3);
+    const webinars = filtered.filter(l => l.listing_type === 'webinar').slice(0, 3);
+    const products = filtered.filter(l => l.listing_type === 'digital_product').slice(0, 3);
+
     useEffect(() => {
         setSidebarOpen(false);
         setShowSettings(false);
@@ -154,16 +191,18 @@ const AllListingPages = ({ theme, setTheme }) => {
             />
 
             <div className="pt-[72px] flex relative w-full">
-                <Sidebar
-                    expanded={sidebarOpen}
-                    setExpanded={setSidebarOpen}
-                    showSettings={showSettings}
-                    setShowSettings={setShowSettings}
-                    activeSetting={activeSetting}
-                    onSectionChange={setActiveSetting}
-                    theme={theme}
-                    setTheme={setTheme}
-                />
+                {isAuthenticated && (
+                    <Sidebar
+                        expanded={sidebarOpen}
+                        setExpanded={setSidebarOpen}
+                        showSettings={showSettings}
+                        setShowSettings={setShowSettings}
+                        activeSetting={activeSetting}
+                        onSectionChange={setActiveSetting}
+                        theme={theme}
+                        setTheme={setTheme}
+                    />
+                )}
 
                 <div className="relative flex-1 min-w-0 overflow-hidden w-full">
                     <div className="relative overflow-y-auto h-[calc(100vh-72px)] w-full">
@@ -180,10 +219,20 @@ const AllListingPages = ({ theme, setTheme }) => {
                                 />
                             </div>
                             
-                            <ListingSection title="Service" items={mockProducts} onNavigate={() => navigate("/view-all-services")} />
-                            <ListingSection title="Digital products" items={mockProducts} onNavigate={() => navigate("/view-all-products")} />
-                            <ListingSection title="Webinar" items={mockProducts} onNavigate={() => navigate("/view-all-webinars")} />
-                            <ListingSection title="Course" items={mockProducts} onNavigate={() => navigate("/view-all-courses")} />
+                            {isLoading ? (
+                                <p style={{ color: '#fff', textAlign: 'center', marginTop: '40px' }}>Loading listings...</p>
+                            ) : (
+                                <>
+                                    {services.length > 0 && <ListingSection title="Service" items={services} onNavigate={() => navigate("/view-all-services")} navigate={navigate} />}
+                                    {products.length > 0 && <ListingSection title="Digital products" items={products} onNavigate={() => navigate("/view-all-products")} navigate={navigate} />}
+                                    {webinars.length > 0 && <ListingSection title="Webinar" items={webinars} onNavigate={() => navigate("/view-all-webinars")} navigate={navigate} />}
+                                    {courses.length > 0 && <ListingSection title="Course" items={courses} onNavigate={() => navigate("/view-all-courses")} navigate={navigate} />}
+                                    
+                                    {!isLoading && filtered.length === 0 && (
+                                        <p style={{ color: '#fff', textAlign: 'center', marginTop: '40px' }}>No listings found.</p>
+                                    )}
+                                </>
+                            )}
                         </div>
                         </main>
                     </div>

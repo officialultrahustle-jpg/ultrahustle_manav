@@ -1969,6 +1969,85 @@ public function updateListing(Request $request, string $username): JsonResponse
         ]);
     }
 
+    public function getAllMarketplaceListings(): JsonResponse
+    {
+        $listings = DB::table('listings')
+            ->where('status', 'published')
+            ->orderByDesc('created_at')
+            ->get([
+                'id',
+                'user_id',
+                'username',
+                'listing_type',
+                'title',
+                'category',
+                'sub_category',
+                'price',
+                'short_description',
+                'cover_media_path',
+                'seller_mode',
+                'team_name',
+                'ai_powered',
+                'created_at',
+            ])
+            ->map(function ($row) {
+                $productType = $row->sub_category;
+
+                $price = $row->price !== null ? (float) $row->price : null;
+                $priceLabel = '';
+                if ($price !== null && $price > 0) {
+                    $priceLabel = 'Price: $' . number_format($price, 2);
+                } else {
+                    $priceLabel = 'Free';
+                }
+
+                $userRecord = DB::table('users')->where('id', $row->user_id)->first(['full_name', 'uh_user_id']);
+                $userFullName = $userRecord->full_name ?? null;
+                $name = $row->seller_mode === 'Team' && $row->team_name ? $row->team_name : $userFullName;
+
+                $avatarPath = DB::table('user_personal_info')
+                    ->where('uh_user_id', $userRecord->uh_user_id ?? null)
+                    ->value('avatar_path');
+                $avatarUrl = $avatarPath
+                    ? Storage::disk('public')->url($avatarPath)
+                    : null;
+
+                $coverUrl = $row->cover_media_path
+                    ? Storage::disk('public')->url($row->cover_media_path)
+                    : 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1400&auto=format&fit=crop';
+
+                return [
+                    'id' => $row->id,
+                    'user_id' => $row->user_id,
+                    'name' => $name,
+                    'username' => $row->username,
+                    'listing_type' => $row->listing_type,
+                    'category' => $row->category,
+                    'sub_category' => $row->sub_category,
+                    'product_type' => $productType,
+                    'title' => $row->title,
+                    'description' => $row->short_description,
+                    'price' => $price,
+                    'priceLabel' => $priceLabel,
+                    'ai' => (bool) $row->ai_powered,
+                    'seller_mode' => $row->seller_mode,
+                    'verified' => true,
+                    'rating' => 4.5, // placeholder
+                    'reviews' => 0, // placeholder
+                    'cta' => 'Know More',
+                    'image' => $coverUrl,
+                    'avatar' => $avatarUrl,
+                    'created_at' => $row->created_at,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'listings' => $listings,
+        ]);
+    }
+
     public function getListingByUsername(Request $request, string $username): JsonResponse
     {
         $user = $request->user();
@@ -2240,5 +2319,67 @@ public function updateListing(Request $request, string $username): JsonResponse
     {
         $value = trim((string) $value);
         return $value !== '' ? $value : null;
+    }
+
+    public function getMarketplaceCategories(): JsonResponse
+    {
+        $types = DB::table('listing_types')
+            ->where('is_active', 1)
+            ->orderBy('sort_order')
+            ->get(['id', 'name', 'slug', 'code']);
+
+        $result = $types->map(function ($type) {
+            $categories = DB::table('listing_categories')
+                ->where('listing_type_id', $type->id)
+                ->where('is_active', 1)
+                ->orderBy('sort_order')
+                ->get(['id', 'name', 'slug']);
+
+            $categoriesWithSubs = $categories->map(function ($cat) use ($type) {
+                $subCategories = DB::table('listing_sub_categories')
+                    ->where('listing_category_id', $cat->id)
+                    ->where('listing_type_id', $type->id)
+                    ->where('is_active', 1)
+                    ->orderBy('sort_order')
+                    ->get(['id', 'name', 'slug']);
+
+                $subCatsWithProducts = $subCategories->map(function ($sub) use ($type, $cat) {
+                    $productTypes = DB::table('listing_product_types')
+                        ->where('listing_sub_category_id', $sub->id)
+                        ->where('listing_category_id', $cat->id)
+                        ->where('listing_type_id', $type->id)
+                        ->where('is_active', 1)
+                        ->orderBy('sort_order')
+                        ->get(['id', 'name', 'slug']);
+
+                    return [
+                        'id'           => $sub->id,
+                        'name'         => $sub->name,
+                        'slug'         => $sub->slug,
+                        'product_types' => $productTypes->values(),
+                    ];
+                });
+
+                return [
+                    'id'             => $cat->id,
+                    'name'           => $cat->name,
+                    'slug'           => $cat->slug,
+                    'sub_categories' => $subCatsWithProducts->values(),
+                ];
+            });
+
+            return [
+                'id'         => $type->id,
+                'name'       => $type->name,
+                'slug'       => $type->slug,
+                'code'       => $type->code,
+                'categories' => $categoriesWithSubs->values(),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'listing_types' => $result->values(),
+        ]);
     }
 }

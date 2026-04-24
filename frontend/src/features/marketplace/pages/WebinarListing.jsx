@@ -22,6 +22,7 @@ import {
 import Swal from "sweetalert2";
 import "./WebinarListing.css";
 import UserNavbar from "../../../components/layout/UserNavbar";
+import Sidebar from "../../../components/layout/Sidebar";
 import "../../../Darkuser.css";
 import "../../dashboard/pages/TeamProfileLight.css";
 import MobileBottomNav from "../../../components/layout/MobileBottomNav";
@@ -102,6 +103,14 @@ const WebinarListing = ({ theme, setTheme }) => {
 
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
+
+  const isAuthenticated = !!(localStorage.getItem("token") || localStorage.getItem("auth_token"));
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSidebarOpen(false);
+    }
+  }, [isAuthenticated]);
 
   const [listing, setListing] = useState(null);
   const [creator, setCreator] = useState(null);
@@ -366,6 +375,18 @@ const WebinarListing = ({ theme, setTheme }) => {
       />
 
       <div className="pt-[72px] flex relative z-10 transition-all duration-300">
+        {isAuthenticated && (
+          <Sidebar
+            expanded={sidebarOpen}
+            setExpanded={setSidebarOpen}
+            showSettings={false}
+            setShowSettings={() => {}}
+            activeSetting="dashboard"
+            onSectionChange={() => {}}
+            theme={theme}
+            setTheme={setTheme}
+          />
+        )}
         <div className="relative flex-1 min-w-0 overflow-hidden">
           <div className="overflow-y-auto h-[calc(100vh-72px)]">
             <div className={`cl-page ${theme}`}>

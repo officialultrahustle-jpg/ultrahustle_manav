@@ -96,6 +96,33 @@ export const getPublicUserListings = async (username) => {
   }
 };
 
+export const getAllMarketplaceListings = async () => {
+  try {
+    const res = await api.get(`/api/v1/public/marketplace/listings`);
+    return unwrap(res);
+  } catch (err) {
+    throw new Error(extractErrorMessage(err));
+  }
+};
+
+export const getMarketplaceCategories = async () => {
+  try {
+    const res = await api.get(`/api/v1/public/marketplace/categories`);
+    return unwrap(res);
+  } catch (err) {
+    throw new Error(extractErrorMessage(err));
+  }
+};
+
+export const getMarketplaceLanguages = async () => {
+  try {
+    const res = await api.get(`/api/v1/public/marketplace/languages`);
+    return unwrap(res);
+  } catch (err) {
+    throw new Error(extractErrorMessage(err));
+  }
+};
+
 //get my teams
 export const getMyTeams = async () => {
   try {

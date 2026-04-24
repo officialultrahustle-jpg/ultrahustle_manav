@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import "./TeamServiceListing.css";
 import UserNavbar from "../../../components/layout/UserNavbar";
+import Sidebar from "../../../components/layout/Sidebar";
 import "../../../Darkuser.css";
 import "../../dashboard/pages/TeamProfileLight.css";
 import MobileBottomNav from "../../../components/layout/MobileBottomNav";
@@ -50,6 +51,14 @@ const ServiceListing = ({ theme, setTheme }) => {
     const [listing, setListing] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [fetchError, setFetchError] = useState(null);
+
+    const isAuthenticated = !!(localStorage.getItem("token") || localStorage.getItem("auth_token"));
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setSidebarOpen(false);
+        }
+    }, [isAuthenticated]);
 
     const getRoutePrefix = (type) => {
         if (!type) return "service";
@@ -579,6 +588,18 @@ const ServiceListing = ({ theme, setTheme }) => {
                     />
 
                     <div className="pt-[85px] flex relative z-10 transition-all duration-300">
+                        {isAuthenticated && (
+                            <Sidebar
+                                expanded={sidebarOpen}
+                                setExpanded={setSidebarOpen}
+                                showSettings={showSettings}
+                                setShowSettings={setShowSettings}
+                                activeSetting={activeSetting}
+                                onSectionChange={setActiveSetting}
+                                theme={theme}
+                                setTheme={setTheme}
+                            />
+                        )}
                         <div className="relative flex-1 min-w-0 overflow-hidden">
                             <div className="overflow-y-auto h-[calc(100vh-85px)]">
                                 <div className={`tsl-page ${theme}`}>

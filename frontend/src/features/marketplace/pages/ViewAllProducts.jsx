@@ -1,33 +1,43 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import UserNavbar from "../../../components/layout/UserNavbar";
 import Sidebar from "../../../components/layout/Sidebar";
 import MobileBottomNav from "../../../components/layout/MobileBottomNav";
+import { getAllMarketplaceListings } from "../api/listingApi";
 import "./TeamServiceListing.css"; /* Reusing card styles */
 import "./AllListingPages.css"; /* Reusing layout styles */
 
-const mockProducts = Array(9).fill({
-    id: "r1",
-    name: "Abigail",
-    verified: true,
-    ai: true,
-    title: "Browse services, products, courses, and webinars tailored...",
-    rating: 4.5,
-    reviews: 123,
-    priceLabel: "Price: ₹ 24,000",
-    cta: "Know More",
-    image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?q=80&w=1400&auto=format&fit=crop",
-});
-
-const ProductCard = ({ p }) => (
+const ProductCard = ({ p, navigate }) => (
     <article className="tsl-mp-card" style={{ margin: 0, width: "100%", maxWidth: "100%" }}>
         <div className="tsl-mp-imgWrap">
-            <img className="tsl-mp-img" src={p.image} alt="" />
+            <img 
+                className="tsl-mp-img" 
+                src={p.image} 
+                alt={p.title} 
+                onError={(e) => {
+                    e.currentTarget.src = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1400&auto=format&fit=crop";
+                }}
+            />
         </div>
         <div className="tsl-mp-cardBody">
             <div className="tsl-mp-topLine">
                 <div className="tsl-mp-user">
-                    <div className="tsl-mp-avatar"></div>
+                    {p.avatar ? (
+                        <img 
+                            src={p.avatar} 
+                            alt={p.name} 
+                            className="tsl-mp-avatar" 
+                            style={{ objectFit: "cover", borderRadius: "50%" }}
+                            onError={(e) => {
+                                e.currentTarget.outerHTML = `<div class="tsl-mp-avatar" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;font-size:0.7rem;">${(p.name || "?").charAt(0).toUpperCase()}</div>`;
+                            }}
+                        />
+                    ) : (
+                        <div className="tsl-mp-avatar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#667eea,#764ba2)', color: '#fff', fontWeight: '700', fontSize: '0.7rem' }}>
+                            {(p.name || "?").charAt(0).toUpperCase()}
+                        </div>
+                    )}
                     <span className="tsl-mp-userName">{p.name}</span>
                     {p.verified && (
                         <svg
@@ -69,8 +79,8 @@ const ProductCard = ({ p }) => (
             <div className="tsl-mp-metaRow">
                 <div className="tsl-mp-rating">
                     <span className="tsl-mp-star">★</span>
-                    <span>{p.rating.toFixed(1)}</span>
-                    <span className="tsl-mp-rev">({p.reviews})</span>
+                    <span>{(p.rating || 4.5).toFixed(1)}</span>
+                    <span className="tsl-mp-rev">({p.reviews || 0})</span>
                 </div>
             </div>
             <div className="tsl-mp-bottomRow">
@@ -79,8 +89,9 @@ const ProductCard = ({ p }) => (
                     className="tsl-mp-cta"
                     style={{ backgroundColor: "#ceff1b", color: "#000" }}
                     type="button"
+                    onClick={() => navigate(`/digital-product/${p.listing_username || p.username}`)}
                 >
-                    {p.cta}
+                    {p.cta || "Know More"}
                     <ChevronRight size={12} className="tsl-mp-ctaIcon" />
                 </button>
             </div>
@@ -94,11 +105,35 @@ const ViewAllProducts = ({ theme, setTheme }) => {
     const [showSettings, setShowSettings] = useState(false);
     const [activeSetting, setActiveSetting] = useState("basic");
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const navigate = useNavigate();
+
+    const [products, setProducts] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        setSidebarOpen(false);
-        setShowSettings(false);
+        const fetchProducts = async () => {
+            try {
+                const data = await getAllMarketplaceListings();
+                if (data.success) {
+                    const filtered = data.listings.filter(l => l.listing_type === 'digital_product');
+                    setProducts(filtered);
+                }
+            } catch (err) {
+                console.error("Error fetching products:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchProducts();
     }, []);
+
+    const isAuthenticated = !!(localStorage.getItem("token") || localStorage.getItem("auth_token"));
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setSidebarOpen(false);
+        }
+    }, [isAuthenticated]);
 
     return (
         <div className={`alp-layout-wrapper user-page ${theme || "light"} min-h-screen relative overflow-hidden`}>
@@ -109,27 +144,36 @@ const ViewAllProducts = ({ theme, setTheme }) => {
             />
 
             <div className="pt-[72px] flex relative w-full">
-                <Sidebar
-                    expanded={sidebarOpen}
-                    setExpanded={setSidebarOpen}
-                    showSettings={showSettings}
-                    setShowSettings={setShowSettings}
-                    activeSetting={activeSetting}
-                    onSectionChange={setActiveSetting}
-                    theme={theme}
-                    setTheme={setTheme}
-                />
+                {isAuthenticated && (
+                    <Sidebar
+                        expanded={sidebarOpen}
+                        setExpanded={setSidebarOpen}
+                        showSettings={showSettings}
+                        setShowSettings={setShowSettings}
+                        activeSetting={activeSetting}
+                        onSectionChange={setActiveSetting}
+                        theme={theme}
+                        setTheme={setTheme}
+                    />
+                )}
 
                 <div className="relative flex-1 min-w-0 overflow-hidden w-full">
                     <div className="relative overflow-y-auto h-[calc(100vh-72px)] w-full">
                         <main className={`alp-main-content ${isDropdownOpen ? "blurred" : ""}`}>
                             <div className="alp-page-container">
-                                <h1 className="alp-page-title">All Products</h1>
-                                <div className="alp-grid">
-                                    {mockProducts.map((item, idx) => (
-                                        <ProductCard key={"sp_" + idx} p={item} />
-                                    ))}
-                                </div>
+                                <h1 className="alp-page-title">Digital products</h1>
+                                {isLoading ? (
+                                    <p style={{ color: '#fff', textAlign: 'center', marginTop: '40px' }}>Loading products...</p>
+                                ) : (
+                                    <div className="alp-grid">
+                                        {products.map((item, idx) => (
+                                            <ProductCard key={item.id} p={item} navigate={navigate} />
+                                        ))}
+                                    </div>
+                                )}
+                                {!isLoading && products.length === 0 && (
+                                    <p style={{ color: '#fff', textAlign: 'center', marginTop: '40px' }}>No products available.</p>
+                                )}
                             </div>
                         </main>
                     </div>

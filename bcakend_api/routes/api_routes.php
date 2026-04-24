@@ -153,6 +153,9 @@ Route::get('/v1/users/username/{username}/portfolio', [PortfolioController::clas
 // Route::get('/v1/users/username/{username}/portfolio', [PublicUserController::class, 'portfolio']);
 Route::get('/v1/users/username/{username}/follow-counts', [PublicUserController::class, 'followCounts']);
 Route::get('/v1/public/users/{username}/listings', [ListingController::class, 'getPublicUserListings']);
+Route::get('/v1/public/marketplace/listings', [ListingController::class, 'getAllMarketplaceListings']);
+Route::get('/v1/public/marketplace/categories', [ListingController::class, 'getMarketplaceCategories']);
+Route::get('/v1/public/marketplace/languages', [ListingController::class, 'getLanguages']);
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
     Route::post('/listings', [ListingController::class, 'store']);
 	Route::get('/my-listings', [ListingController::class, 'myListings']);
