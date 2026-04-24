@@ -2048,12 +2048,9 @@ public function updateListing(Request $request, string $username): JsonResponse
         ]);
     }
 
-    public function getListingByUsername(Request $request, string $username): JsonResponse
+    public function showListingPublic(Request $request, string $username): JsonResponse
     {
-        $user = $request->user();
-
         $listing = DB::table('listings')
-            ->where('user_id', $user->id)
             ->where('username', $username)
             ->first();
 

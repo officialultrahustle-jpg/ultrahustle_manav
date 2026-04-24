@@ -136,10 +136,13 @@ const NavbarLight = ({ onDropdownChange, theme = "light", setTheme, toggleSideba
     const fetchUserName = async () => {
       try {
         const res = await getUserName();
-        // console.log(res.full_name);
         setUsername(res.full_name);
       } catch (error) {
         console.error("Failed to fetch username", error);
+        // If 401, we might want to clear local storage, but for now we just fail gracefully
+        if (error.response?.status === 401) {
+            console.warn("Session expired. User info hidden.");
+        }
       }
     };
 
@@ -158,9 +161,13 @@ const NavbarLight = ({ onDropdownChange, theme = "light", setTheme, toggleSideba
   }, []); */
 
   const loadPersonalInfo = async () => {
-    const info = await getMyPersonalInfo();
-    const data = info?.data ?? [];
-    setAvatar(data.avatar_url);
+    try {
+        const info = await getMyPersonalInfo();
+        const data = info?.data ?? [];
+        setAvatar(data.avatar_url);
+    } catch (error) {
+        console.error("Failed to load personal info", error);
+    }
   };
 
   useEffect(() => {
