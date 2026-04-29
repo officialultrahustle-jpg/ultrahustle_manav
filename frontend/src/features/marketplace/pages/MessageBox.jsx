@@ -10,6 +10,7 @@ import {
     Smile,
     Star,
     SquarePen,
+    CheckCircle2,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import UserNavbar from "../../../components/layout/UserNavbar";
